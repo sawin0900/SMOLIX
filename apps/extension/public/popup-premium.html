@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMOLIX VPN</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2 20 6v5c0 5.2-3.4 9.5-8 11-4.6-1.5-8-5.8-8-11V6l8-4Z"/><path d="m8.7 12 2.1 2.1 4.7-5"/></svg>
+        </div>
+        <div class="brand-meta">
+          <span>SMOLIX</span>
+          <small id="brandSubtitle">VPN</small>
+        </div>
+      </div>
+      <button class="icon-button" id="settingsButton" title="Настройки" type="button" aria-label="Настройки" hidden>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20h-2.6v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L7.6 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6v-2.6h.5a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L9.4 6l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5H15v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v2.6h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </button>
+    </header>
+
+    <section id="authScreen" class="screen" hidden>
+      <div class="auth-heading">
+        <p class="eyebrow" id="authEyebrow">С возвращением</p>
+        <h1 id="authTitle">Войдите в SMOLIX</h1>
+        <p id="authSubtitle">Подписка и защищённое подключение в одном месте.</p>
+      </div>
+      <div class="offline-banner" id="authProxyBanner" hidden>
+        <p>VPN всё ещё активен — можно отключить локально.</p>
+        <button class="danger-button" id="authEmergencyDisconnect" type="button">Отключить</button>
+      </div>
+      <form id="authForm" class="auth-form">
+        <label>
+          <span>Email</span>
+          <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com" required>
+        </label>
+        <label id="passwordLabel">
+          <span>Пароль</span>
+          <div class="field-wrap">
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 8 символов" required>
+            <button class="field-toggle" id="authPasswordToggle" type="button" aria-label="Показать пароль">Показать</button>
+          </div>
+        </label>
+        <button class="primary-button" id="authSubmit" type="submit">Войти</button>
+      </form>
+      <p class="auth-error" id="authError" role="alert"></p>
+      <button class="text-button" id="authModeButton" type="button">Нет аккаунта? Зарегистрироваться</button>
+      <button class="text-button recovery-button" id="recoveryButton" type="button">Не помню пароль</button>
+    </section>
+
+    <section id="recoveryScreen" class="screen" hidden>
+      <button class="back-button" id="recoveryBack" type="button">‹ Назад</button>
+      <div class="auth-heading">
+        <p class="eyebrow">Восстановление</p>
+        <h1>Сбросить пароль</h1>
+        <p>Введите email аккаунта. Если он существует, инструкции придут на почту.</p>
+      </div>
+      <form id="recoveryForm" class="auth-form">
+        <label>
+          <span>Email</span>
+          <input id="recoveryEmail" type="email" autocomplete="email" required>
+        </label>
+        <button class="primary-button" id="recoverySubmit" type="submit">Отправить запрос</button>
+      </form>
+      <p class="auth-error" id="recoveryMessage" role="status"></p>
+    </section>
+
+    <section id="mainScreen" class="screen" hidden>
+      <div class="offline-banner" id="offlineBanner" hidden>
+        <p id="offlineBannerText">Нет соединения с API</p>
+        <button class="text-button" id="retryApiButton" type="button">Повторить</button>
+      </div>
+
+      <div class="mode-switch" role="tablist" aria-label="Режим подключения">
+        <button type="button" class="mode-option active" id="youtubeMode">
+          <span>YouTube</span>
+          <small>Бесплатно</small>
+        </button>
+        <button type="button" class="mode-option" id="fullMode">
+          <span>Весь интернет</span>
+          <small>Premium</small>
+        </button>
+      </div>
+
+      <div class="connection-panel" id="connectionPanel">
+        <div class="orb" id="connectionOrb">
+          <div class="orb-core">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10"/><path d="M7.2 5.8a8 8 0 1 0 9.6 0"/></svg>
+          </div>
+        </div>
+        <p class="connection-kicker" id="connectionKicker">Защита отключена</p>
+        <h1 id="connectionTitle">Подключиться</h1>
+        <div class="session-chip">
+          <span>Сессия</span>
+          <strong id="sessionDuration">00:00:00</strong>
+          <span class="latency-chip" id="latencyValue">—</span>
+        </div>
+        <button class="connect-button" id="connectButton" type="button">
+          <span id="connectText">Подключить</span>
+        </button>
+      </div>
+
+      <button class="location-button" id="locationButton" type="button">
+        <span class="location-flag" id="locationFlag">🇷🇺</span>
+        <span>
+          <small>Локация</small>
+          <strong id="locationName">Россия</strong>
+        </span>
+        <span class="location-meta" id="locationPing">—</span>
+        <span class="chevron" aria-hidden="true">›</span>
+      </button>
+
+      <div class="subscription-strip" id="subscriptionCard">
+        <div>
+          <span id="subscriptionLabel">Подписка</span>
+          ·
+          <strong id="subscriptionTitle">Определяется</strong>
+        </div>
+        <span class="status-pill" id="subscriptionStatus">Загрузка</span>
+      </div>
+    </section>
+
+    <section id="settingsScreen" class="screen" hidden>
+      <div class="screen-header">
+        <button class="back-button" id="settingsBack" type="button">‹ Назад</button>
+        <h2>Настройки</h2>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-group-title">Аккаунт</p>
+        <button class="setting-row" id="passwordButton" type="button">
+          <span><small>Безопасность</small><strong>Сменить пароль</strong></span>
+          <span>›</span>
+        </button>
+        <button class="setting-row" id="devicesButton" type="button">
+          <span><small>Безопасность</small><strong>Активные устройства</strong></span>
+          <span>›</span>
+        </button>
+        <button class="danger-button" id="logoutButton" type="button">Выйти из аккаунта</button>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-group-title">Подключение</p>
+        <label class="setting-toggle-row">
+          <span><small>Старт</small><strong>Автоподключение</strong></span>
+          <input id="autoConnectToggle" type="checkbox">
+        </label>
+        <button class="setting-row" id="diagnosticsButton" type="button">
+          <span><small>Система</small><strong>Диагностика</strong></span>
+          <span>›</span>
+        </button>
+        <button class="setting-row" id="historyButton" type="button">
+          <span><small>Активность</small><strong>История подключений</strong></span>
+          <span>›</span>
+        </button>
+        <div class="setting-toggle-row">
+          <span><small>Приватность</small><strong>Incognito-прокси отключён</strong></span>
+          <span class="safe-dot">●</span>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-group-title">Система</p>
+        <label class="setting-select-row">
+          <span><small>Язык</small><strong>Language</strong></span>
+          <select id="languageSelect">
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+            <option value="es">Español</option>
+            <option value="hi">हिन्दी</option>
+            <option value="ar">العربية</option>
+            <option value="pt">Português</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="tr">Türkçe</option>
+          </select>
+        </label>
+        <label class="setting-select-row">
+          <span><small>Тема</small><strong>Оформление</strong></span>
+          <select id="themeSelect">
+            <option value="light">Светлая</option>
+            <option value="dark">Тёмная</option>
+            <option value="system">Системная</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section id="devicesScreen" class="screen" hidden>
+      <div class="screen-header">
+        <button class="back-button" id="devicesBack" type="button">‹ Назад</button>
+        <h2>Устройства</h2>
+      </div>
+      <div id="devicesList" class="devices-list"></div>
+      <button class="danger-button" id="revokeOthersButton" type="button">Выйти со всех остальных устройств</button>
+    </section>
+
+    <section id="serversScreen" class="screen" hidden>
+      <div class="screen-header">
+        <button class="back-button" id="serversBack" type="button">‹ Назад</button>
+        <h2>Локация</h2>
+      </div>
+      <div id="serversList" class="servers-list"></div>
+    </section>
+
+    <section id="historyScreen" class="screen" hidden>
+      <div class="screen-header">
+        <button class="back-button" id="historyBack" type="button">‹ Назад</button>
+        <h2>История</h2>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <section id="passwordScreen" class="screen" hidden>
+      <div class="screen-header">
+        <button class="back-button" id="passwordBack" type="button">‹ Назад</button>
+        <h2>Пароль</h2>
+      </div>
+      <form id="passwordForm" class="auth-form">
+        <label>
+          <span>Текущий пароль</span>
+          <div class="field-wrap">
+            <input id="currentPassword" type="password" autocomplete="current-password" required>
+            <button class="field-toggle" id="currentPasswordToggle" type="button" aria-label="Показать пароль">Показать</button>
+          </div>
+        </label>
+        <label>
+          <span>Новый пароль</span>
+          <div class="field-wrap">
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+            <button class="field-toggle" id="newPasswordToggle" type="button" aria-label="Показать пароль">Показать</button>
+          </div>
+        </label>
+        <button class="primary-button" id="passwordSubmit" type="submit">Сменить пароль</button>
+      </form>
+      <p class="auth-error" id="passwordMessage" role="status"></p>
+    </section>
+
+    <div class="toast" id="toast" role="status" hidden></div>
+  </main>
+  <script src="popup-premium.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+Provisional stack classification (до полного серверного аудита)
+==============================================================
+
+Дата: 2026-11-21
+Панель: https://panel.jetsale.online
+Источник: SMOLIX env + код API (серверный audit ещё не прислан)
+
+Наблюдения:
+- REMWAVE_BASE_URL указывает на отдельный хост панели (не path /remnawave на SMOLIX)
+- API доступен снаружи с Bearer + TinyAuth X-Api-Key
+- В репозитории нет артефактов eGames (/opt/remnawave, rr)
+
+PROVISIONAL_CLASS=C
+LABEL=custom Remnawave (предположительно) — полный install eGames на панели ЗАПРЕЩЁН
+
+Как подтвердить:
+1) На панели: bash scripts/ops/audit-remnawave-panel.sh | tee audit-panel.txt
+2) Локально: powershell -File scripts/ops/classify-audit.ps1 -Path audit-panel.txt
+3) Обновить этот файл: CLASS=E|C|M по HINT_CLASS
+
+До подтверждения безопасны только:
+- Этап 1 SMOLIX admin Remnawave tab (сделано в коде)
+- read-only audit
+- backup скрипт (ещё не запускать без вашего OK на сервере)

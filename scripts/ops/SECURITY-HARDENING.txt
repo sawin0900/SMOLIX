@@ -1,0 +1,41 @@
+SMOLIX security hardening checklist (server)
+===========================================
+
+API (already in code)
+- Global rate limit + stricter auth/billing/admin limits
+- Login lockout after failed attempts (IP+email)
+- Password strength (letters+digits, ban common)
+- httpOnly / Secure / SameSite cookies; session cap
+- Blocked users lose web+extension sessions
+- CORS allowlist: ALLOWED_ORIGINS + ALLOWED_EXTENSION_IDS
+- CSRF: mutating requests need allowlisted Origin (prod)
+- Mock payment disabled when NODE_ENV=production
+- /db-health + /remnawave-health hidden without INTERNAL_HEALTH_KEY in prod
+- Security headers: HSTS, nosniff, frame deny, no-store, CORP
+- Body limit 32KB, request timeout 30s, bind 127.0.0.1
+
+Required production env
+-----------------------
+NODE_ENV=production
+TRUST_PROXY=1          # if behind nginx/caddy
+ALLOWED_ORIGINS=https://your.domain
+ALLOWED_EXTENSION_IDS=<chrome extension id>
+INTERNAL_HEALTH_KEY=<random 32+ chars>
+COOKIE_SECURE=1
+WEB_APP_URL=https://your.domain
+
+Nginx / Caddy (recommended in front of API+web)
+-----------------------------------------------
+- TLS 1.2+ only
+- limit_req / rate limiting at edge
+- hide server version
+- proxy_set_header X-Forwarded-For / X-Forwarded-Proto
+- do NOT expose Postgres / Remnawave / proxy-manager publicly
+- fail2ban on nginx 401/429 for /auth/login
+
+Ops hygiene
+-----------
+- Rotate REMWAVE_API_TOKEN, YOOKASSA_*, SMTP_PASS, INTERNAL_HEALTH_KEY
+- Keep API on localhost; only reverse proxy public
+- Backups encrypted; never commit .env
+- Monitor 429 spikes and auth failures

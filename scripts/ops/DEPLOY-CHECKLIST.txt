@@ -1,0 +1,36 @@
+SMOLIX + Remnawave — чеклист перед продом
+========================================
+
+1. Env на API-сервере (apps/api/.env):
+   DATABASE_URL=...
+   REMWAVE_BASE_URL=https://panel.jetsale.online
+   REMWAVE_API_TOKEN=<API token из панели Remnawave>
+   REMWAVE_TINYAUTH_X_API_KEY=<X-Api-Key / TinyAuth>
+   REMWAVE_SQUAD_UUID=b73684c7-ce2e-4c3f-9065-fb940578214b   # optional override
+   REMWAVE_PROXY_NODE_UUID=3a20c063-8cdc-4d0f-9e82-67939df3e66e  # optional
+   REMWAVE_PROVISIONING=1   # 0 = только читать ноды, не создавать users
+   WEB_APP_URL=https://smolix.app
+   PROXY_MANAGER_URL=...
+   PROXY_MANAGER_TOKEN=...
+   PROXY_CREDENTIALS_KEY=...
+
+2. В панели Remnawave:
+   - API token с правами: users read/write, internal-squads read, nodes read, system health
+   - Internal Squad UUID совпадает с REMWAVE_SQUAD_UUID
+   - Нода proxy (Россия) в этом squad
+   - TinyAuth / edge пропускает /api с X-Api-Key
+
+3. Проверки после деплоя:
+   curl -s https://API/health
+   curl -s https://API/remnawave-health
+   curl -s -H "Cookie: ..." https://API/admin/remnawave
+   Зарегистрировать тест-юзера → в панели должен появиться username smx_<32hex>
+   Оплатить / trial → expireAt обновится
+
+4. Не делать:
+   - eGames «Установить панель» на живом panel.jetsale.online
+   - Менять nginx/TinyAuth без allowlist /api для SMOLIX
+
+5. Аудит / backup:
+   bash scripts/ops/audit-remnawave-panel.sh
+   bash scripts/ops/backup-remnawave-panel.sh

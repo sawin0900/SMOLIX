@@ -1,0 +1,331 @@
+:root {
+  --panel: #ffffff;
+  --panel-border: #e9ebf3;
+  --brand: #6d5df5;
+}
+
+.loading-screen {
+  min-height: 430px;
+}
+
+.loading-mark {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(109,93,245,.12), rgba(63,130,247,.12));
+  animation: smolixPulse 1.8s ease-in-out infinite;
+}
+
+.loading-mark::before,
+.loading-mark::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.loading-mark::before {
+  border-top-color: var(--brand);
+  border-right-color: #4a86f5;
+  animation: smolixSpin .85s linear infinite;
+}
+
+.loading-mark::after {
+  inset: 11px;
+  border: 1px solid rgba(109,93,245,.16);
+}
+
+.loading-mark svg {
+  position: relative;
+  z-index: 1;
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 1.8;
+}
+
+.loading-screen p {
+  margin: 13px 0 0;
+  color: #7f8296;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+@keyframes smolixSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes smolixPulse {
+  50% { transform: scale(.96); }
+}
+
+#settingsScreen {
+  padding: 0 1px;
+  min-height: 478px;
+}
+
+#settingsScreen .screen-header {
+  height: 42px;
+  margin-bottom: 12px;
+}
+
+#settingsScreen .settings-card,
+#settingsScreen .setting-select-row,
+#settingsScreen .setting-row,
+#settingsScreen .device-card,
+#settingsScreen .danger-button {
+  border-radius: 14px;
+  border-color: var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 5px 16px rgba(35,39,70,.035);
+}
+
+#settingsScreen .settings-card {
+  margin-top: 8px;
+  padding: 4px 12px;
+  overflow: hidden;
+  border-color: #e1e3ed;
+}
+
+#settingsScreen .profile-row {
+  height: 62px;
+  min-height: 62px;
+  padding: 7px 0;
+  margin: 0;
+  border-radius: 0;
+}
+
+#settingsScreen .profile-row.id-row {
+  height: 58px;
+  min-height: 58px;
+  padding: 8px 0;
+  border-top: 1px solid #f0f1f6;
+}
+
+#settingsScreen .setting-select-row,
+#settingsScreen .setting-row {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  height: 58px;
+  margin: 0 0 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e1e3ed;
+  border-radius: 14px;
+  background: #fff;
+}
+
+#settingsScreen .setting-select-row > span,
+#settingsScreen .setting-row > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+#settingsScreen .setting-select-row small,
+#settingsScreen .setting-row small {
+  display: block;
+  color: #85899a;
+  font-size: 9px;
+  line-height: 1;
+}
+
+#settingsScreen .setting-select-row strong,
+#settingsScreen .setting-row strong {
+  display: block;
+  color: #25283f;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+#settingsScreen .setting-select-row select {
+  width: 118px;
+  height: 38px;
+  flex: 0 0 118px;
+  border: 1px solid #e1e3ed;
+  border-radius: 10px;
+  background: #f8f9fc;
+  color: #25283f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#settingsScreen .danger-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.history-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.history-card {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #e8eaf2;
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.history-card strong {
+  font-size: 12px;
+}
+
+.history-card span {
+  color: #85899a;
+  font-size: 9px;
+}
+
+.history-card.connected {
+  border-left: 3px solid #25c58b;
+}
+
+.history-card.failed {
+  border-left: 3px solid #ed5e78;
+}
+
+.history-card.disconnected {
+  border-left: 3px solid #9da1b2;
+}
+
+.history-empty {
+  min-height: 90px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #dfe1ea;
+  border-radius: 14px;
+  color: #85899a;
+  font-size: 11px;
+}
+
+.dark-theme {
+  --panel: #23263a;
+  --panel-border: #34384f;
+}
+
+.dark-theme #settingsScreen .settings-card,
+.dark-theme #settingsScreen .setting-select-row,
+.dark-theme #settingsScreen .setting-row,
+.dark-theme #settingsScreen .danger-button {
+  box-shadow: none;
+}
+
+.dark-theme #settingsScreen .profile-row.id-row,
+.dark-theme #settingsScreen .setting-select-row select {
+  border-color: #34384f;
+}
+
+.dark-theme #settingsScreen .setting-select-row select {
+  background: #2b2f44;
+  color: #f4f5ff;
+}
+
+.dark-theme #settingsScreen .danger-button {
+  background: #292b3e;
+  border-color: #4a3540;
+}
+
+.dark-theme #settingsScreen .profile-row small,
+.dark-theme #settingsScreen .setting-select-row small,
+.dark-theme #settingsScreen .setting-row small {
+  color: #adb1c1;
+}
+
+.dark-theme #settingsScreen .profile-row strong,
+.dark-theme #settingsScreen .setting-select-row strong,
+.dark-theme #settingsScreen .setting-row strong {
+  color: #f6f7ff;
+}
+
+.setting-toggle-row {
+  min-height: 58px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e1e3ed;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.setting-toggle-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-toggle-row small {
+  color: #85899a;
+  font-size: 9px;
+}
+
+.setting-toggle-row strong {
+  color: #25283f;
+  font-size: 12px;
+}
+
+.setting-toggle-row input {
+  appearance: none;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #dfe1e9;
+  position: relative;
+  cursor: pointer;
+}
+
+.setting-toggle-row input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(31,35,73,.16);
+  transition: .2s;
+}
+
+.setting-toggle-row input:checked {
+  background: #6d5df5;
+}
+
+.setting-toggle-row input:checked::after {
+  transform: translateX(18px);
+}
+
+.safe-dot {
+  color: #25c58b;
+  font-size: 10px;
+}
+
+.dark-theme .setting-toggle-row {
+  background: #23263a;
+  border-color: #34384f;
+}
+
+.dark-theme .setting-toggle-row strong {
+  color: #f5f6ff;
+}

@@ -1,0 +1,25 @@
+SMOLIX + eGames modules — порядок после аудита и backup
+=======================================================
+
+Правило: один модуль за раз, один сервер, проверка, откат.
+
+Приоритет для SMOLIX:
+1. Backup/Restore (панель) — backup-remnawave-panel.sh; если CLASS=E → rr меню 7
+2. Новые ноды на ЧИСТОМ VPS — eGames «Только нода» или ручной Xray:443+SelfSteal
+3. WARP Native — только на выбранной ноде (исходящий)
+4. Torrent blocker / фильтры — на нодах
+5. Xray Checker → данные в SMOLIX GET /status (после того как checker есть)
+6. Клиентский балансировщик / sub rules — если появятся native VPN-клиенты
+7. NetBird — только если закрываем публичный :2222
+8. Cookie-защита панели — ТОЛЬКО с allowlist /api для SMOLIX; высокий риск
+
+ЗАПРЕЩЕНО на panel.jetsale.online:
+- Установить только панель / панель+нода / Переустановить
+- Удалить скрипт (п.13) вслепую
+- Менять DNS/порты/сертификаты без отдельного плана
+
+Проверка после каждого шага:
+- docker ps
+- https://panel.jetsale.online (вход)
+- SMOLIX: GET /remnawave-health и вкладка Admin → Remnawave
+- тестовое подключение extension / proxy

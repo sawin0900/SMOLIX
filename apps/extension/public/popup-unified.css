@@ -1,0 +1,342 @@
+:root {
+  --smolix-primary: #6d5df5;
+  --smolix-blue: #3f82f7;
+  --smolix-success: #25c58b;
+  --smolix-danger: #ed5e78;
+  --smolix-border: #e7e9f1;
+  --smolix-muted: #85899b;
+  --smolix-text: #20233a;
+  --smolix-surface: #ffffff;
+  --smolix-canvas: #f4f5fa;
+  --smolix-radius-sm: 10px;
+  --smolix-radius-md: 14px;
+  --smolix-radius-lg: 18px;
+  --smolix-control-height: 52px;
+  --smolix-transition: 180ms cubic-bezier(.2,.8,.2,1);
+}
+
+body {
+  background: var(--smolix-canvas);
+  color: var(--smolix-text);
+}
+
+button,
+select,
+input,
+.primary-button,
+.connect-button,
+.setting-row,
+.setting-select-row,
+.setting-toggle-row,
+.location-button,
+.server-card,
+.device-card,
+.history-card {
+  font-family: inherit;
+}
+
+button,
+select,
+input {
+  transition:
+    transform var(--smolix-transition),
+    border-color var(--smolix-transition),
+    background var(--smolix-transition),
+    box-shadow var(--smolix-transition),
+    opacity var(--smolix-transition);
+}
+
+button:not(:disabled),
+select,
+.mode-option,
+.setting-row,
+.setting-select-row,
+.setting-toggle-row,
+.location-button,
+.server-card {
+  cursor: pointer;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.primary-button:focus-visible,
+.connect-button:focus-visible,
+.setting-row:focus-visible,
+.setting-select-row:focus-within,
+.setting-toggle-row:focus-within,
+.location-button:focus-visible,
+.server-card:focus-visible,
+.mode-option:focus-visible,
+.icon-button:focus-visible,
+.back-button:focus-visible,
+.text-button:focus-visible,
+.danger-button:focus-visible {
+  outline: 3px solid rgba(109,93,245,.18);
+  outline-offset: 2px;
+}
+
+button:disabled,
+.primary-button:disabled,
+.connect-button:disabled,
+.danger-button:disabled,
+.setting-row:disabled,
+.server-card:disabled {
+  opacity: .58;
+  cursor: wait;
+  transform: none;
+  box-shadow: none;
+}
+
+button:active:not(:disabled),
+.primary-button:active:not(:disabled),
+.connect-button:active:not(:disabled),
+.setting-row:active:not(:disabled),
+.location-button:active:not(:disabled),
+.server-card:active:not(:disabled) {
+  transform: scale(.985);
+}
+
+.primary-button,
+.connect-button,
+.danger-button,
+.setting-row,
+.setting-select-row,
+.setting-toggle-row,
+.location-button,
+.mode-switch,
+.subscription-card,
+.status-grid div,
+.server-card,
+.device-card,
+.history-card {
+  border-radius: var(--smolix-radius-md);
+}
+
+.primary-button,
+.connect-button {
+  min-height: var(--smolix-control-height);
+  border: 0;
+}
+
+.primary-button:hover:not(:disabled),
+.connect-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(91,104,226,.24);
+}
+
+.mode-switch {
+  border-color: var(--smolix-border);
+  background: var(--smolix-surface);
+}
+
+.mode-option {
+  min-height: 44px;
+  border-radius: var(--smolix-radius-sm);
+}
+
+.mode-option:hover:not(.active) {
+  background: #f7f7fb;
+}
+
+.connection-panel,
+.subscription-card,
+.location-button,
+.status-grid div,
+.setting-select-row,
+.setting-row,
+.setting-toggle-row,
+.server-card,
+.device-card,
+.history-card,
+.auth-form input,
+.setting-select-row select {
+  border-color: var(--smolix-border);
+}
+
+.connection-panel {
+  box-shadow: 0 10px 24px rgba(52,58,105,.055);
+}
+
+.connection-panel.connected {
+  box-shadow: 0 12px 28px rgba(37,197,139,.08);
+}
+
+.connection-panel.error {
+  box-shadow: 0 12px 28px rgba(237,94,120,.08);
+}
+
+.offline-banner {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(237, 94, 120, 0.28);
+  border-radius: var(--smolix-radius-md);
+  background: rgba(237, 94, 120, 0.08);
+  color: var(--smolix-text);
+}
+
+.offline-banner[hidden] {
+  display: none !important;
+}
+
+.offline-banner p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b4455c;
+}
+
+.offline-banner .text-button,
+.offline-banner .danger-button {
+  justify-self: start;
+}
+
+.dark-theme .offline-banner {
+  background: rgba(237, 94, 120, 0.14);
+  border-color: rgba(237, 94, 120, 0.35);
+}
+
+.dark-theme .offline-banner p {
+  color: #ff9aab;
+}
+
+.connect-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.subscription-card,
+.location-button,
+.status-grid div,
+.setting-select-row,
+.setting-row,
+.setting-toggle-row,
+.server-card,
+.device-card,
+.history-card {
+  background: var(--smolix-surface);
+}
+
+.setting-select-row,
+.setting-row,
+.setting-toggle-row {
+  min-height: 58px;
+  height: 58px;
+  margin: 0 0 8px;
+}
+
+.setting-select-row:hover,
+.setting-row:hover,
+.setting-toggle-row:hover,
+.location-button:hover,
+.server-card:hover,
+.device-card:hover,
+.history-card:hover {
+  border-color: #d8daf0;
+  box-shadow: 0 8px 18px rgba(64,69,114,.055);
+}
+
+.setting-row,
+.setting-select-row,
+.setting-toggle-row,
+.location-button,
+.server-card,
+.device-card,
+.history-card {
+  transform: translateZ(0);
+}
+
+.screen {
+  animation: smolixScreenIn 220ms cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes smolixScreenIn {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.toast {
+  max-width: 328px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  animation: smolixToastIn 180ms ease-out;
+}
+
+@keyframes smolixToastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.screen-header,
+.settings-card,
+.servers-list,
+.devices-list,
+.history-list {
+  scroll-margin-top: 8px;
+}
+
+#settingsScreen,
+#devicesScreen,
+#serversScreen,
+#historyScreen,
+#passwordScreen {
+  max-height: 488px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #dfe1ea transparent;
+  padding-right: 2px;
+}
+
+#settingsScreen::-webkit-scrollbar,
+#devicesScreen::-webkit-scrollbar,
+#serversScreen::-webkit-scrollbar,
+#historyScreen::-webkit-scrollbar,
+#passwordScreen::-webkit-scrollbar {
+  width: 4px;
+}
+
+#settingsScreen::-webkit-scrollbar-thumb,
+#devicesScreen::-webkit-scrollbar-thumb,
+#serversScreen::-webkit-scrollbar-thumb,
+#historyScreen::-webkit-scrollbar-thumb,
+#passwordScreen::-webkit-scrollbar-thumb {
+  background: #dfe1ea;
+  border-radius: 99px;
+}
+
+.dark-theme {
+  --smolix-border: #34384f;
+  --smolix-muted: #adb1c1;
+  --smolix-text: #f5f6ff;
+  --smolix-surface: #23263a;
+  --smolix-canvas: #17192a;
+}
+
+.dark-theme .mode-option:hover:not(.active),
+.dark-theme .setting-select-row select {
+  background: #2b2f44;
+}
+
+.dark-theme .subscription-card,
+.dark-theme .location-button,
+.dark-theme .status-grid div,
+.dark-theme .setting-select-row,
+.dark-theme .setting-row,
+.dark-theme .setting-toggle-row,
+.dark-theme .server-card,
+.dark-theme .device-card,
+.dark-theme .history-card,
+.dark-theme .auth-form input {
+  background: var(--smolix-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

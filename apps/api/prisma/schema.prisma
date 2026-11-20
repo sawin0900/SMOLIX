@@ -1,0 +1,404 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  FAILED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPPORT
+}
+
+model User {
+  id                String             @id @default(uuid()) @db.Uuid
+  email             String             @unique
+  passwordHash      String
+  status            UserStatus         @default(ACTIVE)
+  emailVerifiedAt   DateTime?
+  referralCode      String?            @unique @db.VarChar(16)
+  referredByUserId  String?            @db.Uuid
+  signupIpHash      String?            @db.VarChar(64)
+  supportCode       String?            @unique @db.VarChar(16)
+  adminNote         String?            @db.VarChar(1000)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessions          Session[]
+  extensionSessions ExtensionSession[]
+  vpnAccount        VpnAccount?
+  subscriptions     Subscription[]
+  orders            Order[]
+  connectionHistory ConnectionHistory[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  couponRedemptions CouponRedemption[]
+  role              UserRole           @default(USER)
+  referredBy        User?              @relation("UserReferrals", fields: [referredByUserId], references: [id])
+  referrals         User[]             @relation("UserReferrals")
+  referralRewardsGiven    ReferralReward[] @relation("ReferralRewardsGiven")
+  referralRewardsReceived ReferralReward[] @relation("ReferralRewardsReceived")
+
+  @@index([referredByUserId])
+  @@index([signupIpHash])
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ExtensionSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  deviceName String    @default("Chrome Extension")
+  deviceId   String?   @db.VarChar(64)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model VpnAccount {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @unique @db.Uuid
+  remnawaveUserId   String? @unique
+  remnawaveUsername String? @unique
+  isProvisioned     Boolean @default(false)
+
+  /// Remnawave shortUuid — path segment of subscription page
+  subscriptionShortUuid String? @unique @db.VarChar(64)
+  /// Full link like https://node.jetsale.online/HWYq2JVpKfk2V1fq
+  subscriptionUrl       String? @db.VarChar(512)
+
+  proxyUsername          String? @unique
+  proxyPasswordEncrypted String?
+  proxyProvisioned       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Server {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  country   String
+  city      String?
+  hostname  String
+  port      Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Plan {
+  id           String   @id @default(uuid()) @db.Uuid
+  slug         String?  @unique
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  currency     String   @default("RUB")
+  durationDays Int
+  trafficLimit BigInt?
+  deviceLimit  Int      @default(1)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+  orders        Order[]
+}
+
+model Subscription {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @db.Uuid
+  planId    String             @db.Uuid
+  status    SubscriptionStatus @default(PENDING)
+  isTrial   Boolean            @default(false)
+  startsAt  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan               @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+}
+
+model Order {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
+  planId    String      @db.Uuid
+  status    OrderStatus @default(PENDING)
+  amount    Decimal     @db.Decimal(10, 2)
+  currency  String      @default("RUB")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id])
+  plan      Plan        @relation(fields: [planId], references: [id])
+  payment   Payment?
+}
+
+model Payment {
+  id                String         @id @default(uuid()) @db.Uuid
+  orderId           String         @unique @db.Uuid
+  provider          String?
+  providerPaymentId String?        @unique
+  status            PaymentStatus  @default(PENDING)
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String         @default("RUB")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  order             Order          @relation(fields: [orderId], references: [id])
+  events            PaymentEvent[]
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentId String   @db.Uuid
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+}
+
+model ConnectionHistory {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  serverId  String?
+  mode      String
+  status    ConnectionStatus
+  message   String?
+  startedAt DateTime         @default(now())
+  endedAt   DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String   @db.Uuid
+  actorEmail String   @db.VarChar(254)
+  action     String   @db.VarChar(64)
+  targetType String?  @db.VarChar(64)
+  targetId   String?  @db.VarChar(64)
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Coupon {
+  id             String   @id @default(uuid()) @db.Uuid
+  code           String   @unique @db.VarChar(32)
+  percentOff     Int?
+  amountOff      Decimal? @db.Decimal(10, 2)
+  bonusDays      Int      @default(0)
+  maxRedemptions Int?
+  redeemedCount  Int      @default(0)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  redemptions    CouponRedemption[]
+
+  @@index([isActive, code])
+}
+
+model CouponRedemption {
+  id        String   @id @default(uuid()) @db.Uuid
+  couponId  String   @db.Uuid
+  userId    String   @db.Uuid
+  orderId   String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId])
+  @@index([userId])
+}
+
+model SignupEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  kind      String   @db.VarChar(32)
+  ipHash    String?  @db.VarChar(64)
+  emailDomain String? @db.VarChar(120)
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([createdAt])
+}
+
+model WaitlistEntry {
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String    @unique
+  source     String    @default("landing")
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  GRANTED
+  REJECTED
+}
+
+model ReferralReward {
+  id              String               @id @default(uuid()) @db.Uuid
+  referrerUserId  String               @db.Uuid
+  referredUserId  String               @db.Uuid
+  daysGranted     Int                  @default(7)
+  status          ReferralRewardStatus @default(GRANTED)
+  grantedAt       DateTime?
+  rejectReason    String?              @db.VarChar(120)
+  createdAt       DateTime             @default(now())
+
+  referrer User @relation("ReferralRewardsGiven", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("ReferralRewardsReceived", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerUserId, referredUserId])
+  @@index([referredUserId])
+  @@index([status, createdAt])
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+/// In-app admin notifications (blocked IP / server down)
+model AdminAlert {
+  id        String        @id @default(uuid()) @db.Uuid
+  type      String        @db.VarChar(64)
+  title     String        @db.VarChar(200)
+  message   String
+  severity  AlertSeverity @default(WARNING)
+  status    AlertStatus   @default(OPEN)
+  target    String?       @db.VarChar(255)
+  meta      Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([type, target])
+}
+
+/// Last probe snapshot for a host (proxy / panel / custom)
+model ProbeTarget {
+  id              String    @id @default(uuid()) @db.Uuid
+  key             String    @unique @db.VarChar(64)
+  label           String    @db.VarChar(120)
+  host            String    @db.VarChar(255)
+  port            Int       @default(443)
+  kind            String    @db.VarChar(32)
+  isActive        Boolean   @default(true)
+  lastStatus      String?   @db.VarChar(32)
+  lastIp          String?   @db.VarChar(64)
+  lastLatencyMs   Int?
+  lastBlocked     Boolean?
+  lastError       String?
+  lastCheckedAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isActive])
+}

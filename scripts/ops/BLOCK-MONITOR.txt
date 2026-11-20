@@ -1,0 +1,23 @@
+SMOLIX block monitor (cheburcheck-inspired)
+==========================================
+
+What it does
+- Periodically probes PROXY / Remnawave panel / subscription host (TCP)
+- Resolves IPv4 and checks against antifilter.download community lists
+  (same family of lists used by https://github.com/LowderPlay/cheburcheck)
+- Opens AdminAlert when host is DOWN or IP looks BLOCKED
+- Auto-resolves alert when probe is healthy again
+
+Admin UI
+- Tab «Алерты»: probes snapshot + notifications (Ack / Resolve)
+- Button «Проверить сейчас»
+
+Env
+PROXY_PUBLIC_HOST=rassiya.jetsale.online
+PROXY_PUBLIC_PORT=8443
+BLOCK_MONITOR=1
+BLOCK_MONITOR_INTERVAL_MS=300000
+
+Russian sites with full VPN
+- Extension full mode uses PAC split-tunnel: *.ru and major RU services = DIRECT
+- Foreign traffic still goes through HTTPS proxy

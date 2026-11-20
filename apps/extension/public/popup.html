@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMOLIX VPN</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">S</div>
+        <div>
+          <div class="brand-name">SMOLIX</div>
+          <div class="brand-caption">SECURE CONNECTION</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Не подключён</span>
+      </div>
+    </header>
+
+    <section id="loginSection" class="login-section" hidden>
+      <h2>Вход в аккаунт</h2>
+      <p>Войдите, чтобы управлять своим VPN.</p>
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="username" required>
+        <label for="password">Пароль</label>
+        <input id="password" type="password" placeholder="Введите пароль" autocomplete="current-password" required>
+        <button class="connect-button" type="submit" id="loginButton">Войти в SMOLIX</button>
+      </form>
+      <div id="loginMessage" class="message" role="status"></div>
+    </section>
+
+    <section id="accountSection" hidden>
+      <section class="smolix-main" id="mainScreen">
+        <div class="mode-switch" aria-label="Режим подключения">
+          <button type="button" class="mode-option active" id="youtubeMode">
+            <span>Only YouTube</span>
+          </button>
+          <button type="button" class="mode-option" id="fullMode">
+            <span>Весь интернет</span>
+            <span class="lock-icon">⌕</span>
+          </button>
+        </div>
+
+        <button class="connect-button main-connect" id="connectButton" type="button">
+          <span class="power">▶</span>
+          <span id="connectButtonText">Подключиться</span>
+        </button>
+        <div class="connection-label" id="connectionLabel">Не подключено</div>
+
+        <button class="premium-card" id="premiumCard" type="button">
+          <div class="premium-heading">
+            <strong id="premiumTitle">У вас нет Premium</strong>
+            <span class="free-badge" id="premiumBadge">Free</span>
+          </div>
+          <ul>
+            <li>Видео в хорошем качестве</li>
+            <li>Без рекламы</li>
+            <li>Полный доступ к интернету</li>
+          </ul>
+          <span class="premium-action" id="premiumAction">Попробовать бесплатно</span>
+        </button>
+
+        <div class="support-row">
+          <button type="button" id="helpButton" class="support-button">Нужна помощь?</button>
+          <button type="button" id="telegramButton" class="support-button primary">Telegram-поддержка</button>
+        </div>
+
+        <button type="button" class="account-link" id="openSettings">
+          <span id="userEmail">Аккаунт SMOLIX</span>
+          <span>Настройки ›</span>
+        </button>
+      </section>
+
+      <section id="settingsScreen" class="settings-screen" hidden>
+        <div class="settings-header">
+          <button type="button" class="back-button" id="closeSettings">‹</button>
+          <strong>Настройки</strong>
+          <button type="button" class="header-close" id="closeSettingsIcon">×</button>
+        </div>
+
+        <div class="settings-list">
+          <div class="settings-row">
+            <span>Язык</span>
+            <button type="button" class="settings-select">Русский⌄</button>
+          </div>
+          <div class="settings-row">
+            <span>Тема расширения</span>
+            <button type="button" class="settings-select">Светлая</button>
+          </div>
+          <div class="settings-row">
+            <span>Режим</span>
+            <button type="button" class="settings-select" id="settingsMode">Прямой</button>
+          </div>
+          <div class="settings-row">
+            <span>Аккаунт</span>
+            <strong id="settingsEmail">—</strong>
+          </div>
+        </div>
+
+        <button id="logoutButton" class="logout-button-wide" type="button">Выйти из аккаунта</button>
+        <button type="button" class="back-button-wide" id="backSettings">Назад</button>
+      </section>
+
+      <section class="premium-modal" id="premiumModal" hidden>
+        <div class="premium-modal-card">
+          <button type="button" class="premium-close" id="closePremium">×</button>
+          <div class="premium-mark">S</div>
+          <h2>Откройте весь интернет вместе с Premium</h2>
+          <ul>
+            <li><span>✓</span> Доступ к любому сайту</li>
+            <li><span>✓</span> Быстрое соединение в хорошем качестве</li>
+            <li><span>✓</span> Без рекламы в интерфейсе сервиса</li>
+            <li><span>✓</span> Приоритетная поддержка</li>
+          </ul>
+          <button type="button" class="premium-primary" id="continuePremium">Продолжить с Premium</button>
+          <button type="button" class="premium-secondary" id="closePremiumBottom">Назад</button>
+        </div>
+      </section>
+
+      <section id="serverPicker" class="server-picker" hidden>
+        <div class="picker-header">
+          <div>
+            <strong>Выбор локации</strong>
+            <span>Доступные серверы SMOLIX</span>
+          </div>
+          <button id="closeServerPicker" type="button" class="picker-close">×</button>
+        </div>
+        <div id="serverList" class="server-list"></div>
+      </section>
+    </section>
+
+    <div id="appMessage" class="message" role="status"></div>
+
+    <footer>
+      <span>SMOLIX VPN</span>
+      <span>Безопасность начинается здесь</span>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
+

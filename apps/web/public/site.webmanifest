@@ -1,0 +1,23 @@
+{
+  "name": "SMOLIX",
+  "short_name": "SMOLIX",
+  "description": "Защищённый доступ в браузере. YouTube бесплатно, весь интернет с Premium.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef3f5",
+  "theme_color": "#0f766e",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ]
+}
