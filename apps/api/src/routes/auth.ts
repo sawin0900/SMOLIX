@@ -6,7 +6,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { createPendingReferralReward, ensureUniqueReferralCode } from '../lib/referral.js'
-import { emailVerificationEmail, passwordResetEmail, sendMail } from '../lib/mailer.js'
+import { emailVerificationEmail, passwordResetEmail, sendMail, welcomeEmail } from '../lib/mailer.js'
 import { provisionRemnawaveAwait, provisionRemnawaveInBackground } from '../lib/vpn-provision.js'
 import {
   checkFormTiming,
@@ -270,6 +270,14 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         timeoutMs: 12000,
         log: request.log,
       })
+
+      try {
+        const webAppUrl = (process.env.WEB_APP_URL || 'https://jetsale.online').replace(/\/+$/, '')
+        const welcome = welcomeEmail(webAppUrl)
+        await sendMail({ to: email, subject: welcome.subject, text: welcome.text })
+      } catch (mailError) {
+        request.log.error(mailError, 'welcome email failed')
+      }
 
       const token = await createSession(user.id)
 

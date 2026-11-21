@@ -66,6 +66,26 @@ export function premiumLaunchEmail(siteUrl: string) {
   return { subject, text }
 }
 
+export function welcomeEmail(siteUrl: string) {
+  const site = siteUrl.replace(/\/+$/, '')
+  const subject = 'Добро пожаловать в jetsale.online'
+  const text = [
+    'Здравствуйте!',
+    '',
+    'Аккаунт jetsale.online создан. Вам доступен пробный период Premium.',
+    '',
+    `Кабинет: ${site}/app`,
+    `Установка расширения: ${site}/install`,
+    `Подписка: ${site}/app/subscription`,
+    '',
+    'Если возникнут вопросы — напишите на info@jetsale.online',
+    '',
+    'Команда jetsale.online',
+  ].join('\n')
+
+  return { subject, text }
+}
+
 export function passwordResetEmail(resetUrl: string) {
   const subject = 'Сброс пароля jetsale.online'
   const text = [
