@@ -61,11 +61,20 @@ function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex')
 }
 
+function cookieSecure() {
+  const flag = process.env.COOKIE_SECURE?.trim()
+  if (flag === '0' || flag === 'false') return false
+  if (flag === '1' || flag === 'true') return true
+  // HTTP deploys (IP / no TLS yet) must not set Secure — browser drops the session cookie
+  const web = process.env.WEB_APP_URL?.trim() || ''
+  return web.startsWith('https://')
+}
+
 function cookieOptions() {
   return {
     path: '/',
     httpOnly: true,
-    secure: isProduction() || process.env.COOKIE_SECURE === '1',
+    secure: cookieSecure(),
     sameSite: 'lax' as const,
     maxAge: SESSION_SECONDS,
   }

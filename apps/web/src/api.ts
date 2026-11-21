@@ -5,8 +5,10 @@ function defaultApiUrl() {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${protocol}//${hostname}:3001`
     }
+    // Production behind nginx: same-origin /api proxy
+    return '/api'
   }
-  return 'http://127.0.0.1:3001'
+  return '/api'
 }
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '')
