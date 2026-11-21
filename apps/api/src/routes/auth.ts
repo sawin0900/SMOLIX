@@ -64,10 +64,8 @@ function hashToken(token: string) {
 function cookieSecure() {
   const flag = process.env.COOKIE_SECURE?.trim()
   if (flag === '0' || flag === 'false') return false
-  if (flag === '1' || flag === 'true') return true
-  // HTTP deploys (IP / no TLS yet) must not set Secure — browser drops the session cookie
-  const web = process.env.WEB_APP_URL?.trim() || ''
-  return web.startsWith('https://')
+  // Only when explicitly enabled — HTTP IP deploys break if Secure is on
+  return flag === '1' || flag === 'true'
 }
 
 function cookieOptions() {

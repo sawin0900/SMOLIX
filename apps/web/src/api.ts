@@ -318,10 +318,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   })
 
-  const data = await response.json()
+  const raw = await response.text()
+  let data: { error?: string } & Record<string, unknown> = {}
+  if (raw) {
+    try {
+      data = JSON.parse(raw) as typeof data
+    } catch {
+      throw new Error(
+        response.ok
+          ? 'Сервер вернул неожиданный ответ'
+          : `Ошибка сервера (${response.status})`,
+      )
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Произошла ошибка. Попробуйте ещё раз.')
+    throw new Error(
+      (typeof data.error === 'string' && data.error)
+        || (response.status === 401 ? 'Требуется авторизация' : null)
+        || `Произошла ошибка (${response.status}). Попробуйте ещё раз.`,
+    )
   }
 
   return data as T
