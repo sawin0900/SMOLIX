@@ -1,4 +1,8 @@
-const API_URLS = ["http://127.0.0.1:3001", "http://localhost:3001"];
+const API_URLS = [
+  "https://jetsale.online/api",
+  "http://127.0.0.1:3001",
+  "http://localhost:3001",
+];
 const $ = (id) => document.getElementById(id);
 
 const screens = {

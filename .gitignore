@@ -7,6 +7,9 @@ coverage/
 .env.*
 !.env.example
 
+# Chrome extension private signing material (public key lives in .extension-key.txt)
+apps/extension/.signing-private.pem
+
 *.log
 .DS_Store
 Thumbs.db

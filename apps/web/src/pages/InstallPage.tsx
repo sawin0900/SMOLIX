@@ -6,16 +6,18 @@ import { SEO_PAGES, SITE_URL } from '../seo'
 import { CHROME_STORE_URL, IS_CHROME_STORE_LIVE } from '../config'
 import { getAccount, refreshVpnSubscription, type VpnAccountInfo } from '../api'
 
+const EXTENSION_ZIP_URL = '/downloads/jetsale-chrome.zip'
+
 const BROWSER_STEPS = [
   {
     title: 'Создайте аккаунт jetsale.online',
     text: 'Один email для сайта, расширения и приложений.',
   },
   {
-    title: IS_CHROME_STORE_LIVE ? 'Установите из Chrome Web Store' : 'Откройте chrome://extensions',
+    title: IS_CHROME_STORE_LIVE ? 'Установите из Chrome Web Store' : 'Скачайте и установите расширение',
     text: IS_CHROME_STORE_LIVE
       ? 'Одной кнопкой из магазина, затем войдите тем же аккаунтом.'
-      : 'Включите «Режим разработчика» и загрузите unpacked из apps/extension.',
+      : 'Скачайте ZIP → распакуйте → chrome://extensions → «Режим разработчика» → «Загрузить распакованное» → выберите папку jetsale-chrome.',
   },
   {
     title: 'Войдите в popup',
@@ -152,14 +154,19 @@ export default function InstallPage() {
                   <Store size={16} /> Chrome Web Store
                 </a>
               ) : (
-                <a
-                  href="https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl brand-gradient text-white px-4 py-3 text-sm font-bold"
-                >
-                  <Download size={16} /> Как загрузить unpacked
-                </a>
+                <>
+                  <a
+                    href={EXTENSION_ZIP_URL}
+                    download="jetsale-chrome.zip"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl brand-gradient text-white px-4 py-3 text-sm font-bold"
+                  >
+                    <Download size={16} /> Скачать расширение (ZIP)
+                  </a>
+                  <p className="text-xs text-[var(--muted)] leading-5">
+                    После скачивания распакуйте архив. В Chrome: chrome://extensions → включите «Режим разработчика» →
+                    «Загрузить распакованное расширение» → укажите папку <span className="font-mono">jetsale-chrome</span>.
+                  </p>
+                </>
               )}
             </div>
           </section>

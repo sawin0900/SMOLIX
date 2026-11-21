@@ -63,7 +63,8 @@ app.addHook('onSend', async (request, reply, payload) => {
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin')
   reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
   reply.header('Cross-Origin-Opener-Policy', 'same-origin')
-  reply.header('Cross-Origin-Resource-Policy', 'same-site')
+  // cross-origin: Chrome extension (chrome-extension://) must read API responses
+  reply.header('Cross-Origin-Resource-Policy', 'cross-origin')
   reply.header('X-DNS-Prefetch-Control', 'off')
   reply.header('Cache-Control', 'no-store')
 
