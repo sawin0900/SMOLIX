@@ -67,7 +67,7 @@ export default function LegalPage() {
 
   return (
     <div className="min-h-screen app-bg">
-      <SeoHead {...seo} title={title ? `${title} — SMOLIX` : seo.title} />
+      <SeoHead {...seo} title={title ? `${title} — jetsale.online` : seo.title} />
       <div className="section-shell py-8 md:py-12 max-w-3xl">
         <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-800 mb-8">
           <ArrowLeft size={16} /> На главную

@@ -33,7 +33,7 @@ export function DevicesView({
     <>
       <p className="text-sm text-teal-700 font-semibold mb-2">Безопасность</p>
       <h1 className="text-3xl font-bold tracking-normal">{t.navDevices}</h1>
-      <p className="text-[var(--muted)] text-sm mt-2 mb-3">Активные сессии расширения SMOLIX.</p>
+      <p className="text-[var(--muted)] text-sm mt-2 mb-3">Активные сессии расширения jetsale.online.</p>
       <TrialBanner subscription={subscription} />
       <p className={`text-sm font-semibold mb-8 ${overLimit ? 'text-rose-600' : 'text-[var(--muted)]'}`}>
         Используется {devices.length} из {deviceLimit}

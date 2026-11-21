@@ -129,7 +129,7 @@ async function checkLatency() {
     const elapsed = Math.round(performance.now() - started);
     latencyValue.textContent = `${elapsed} мс`;
   } catch (error) {
-    console.error("SMOLIX latency check error:", error);
+    console.error("jetsale.online latency check error:", error);
 
     if (isProxyConnected) {
       latencyValue.textContent = "—";
@@ -195,7 +195,7 @@ async function restoreConnectionState() {
       stopLatencyMonitoring();
     }
   } catch (error) {
-    console.error("SMOLIX status restore error:", error);
+    console.error("jetsale.online status restore error:", error);
     renderConnectionState(false);
   }
 }
@@ -424,7 +424,7 @@ async function checkSession() {
       return;
     }
 
-    showLogin("API недоступен. Проверьте подключение и запустите SMOLIX API.");
+    showLogin("API недоступен. Проверьте подключение и запустите jetsale.online API.");
   }
 }
 
@@ -444,7 +444,7 @@ loginForm.addEventListener("submit", async event => {
       body: JSON.stringify({
         email,
         password,
-        deviceName: "SMOLIX Chrome Extension",
+        deviceName: "jetsale.online Chrome Extension",
       }),
     });
 
@@ -465,7 +465,7 @@ loginForm.addEventListener("submit", async event => {
     );
   } finally {
     loginButton.disabled = false;
-    loginButton.textContent = "Войти в SMOLIX";
+    loginButton.textContent = "Войти в jetsale.online";
   }
 });
 
@@ -478,7 +478,7 @@ document.getElementById("logoutButton").addEventListener("click", async () => {
       type: "DISCONNECT"
     });
   } catch (error) {
-    console.error("SMOLIX proxy disconnect error:", error);
+    console.error("jetsale.online proxy disconnect error:", error);
   }
 
   try {
@@ -489,7 +489,7 @@ document.getElementById("logoutButton").addEventListener("click", async () => {
       }, token);
     }
   } catch (error) {
-    console.error("SMOLIX logout error:", error);
+    console.error("jetsale.online logout error:", error);
   } finally {
     await chrome.storage.session.remove("smolixProxyCredentials");
 
@@ -548,7 +548,7 @@ document.getElementById("connectButton").addEventListener("click", async () => {
       showMessage(appMessage, "Прокси подключён");
     }
   } catch (error) {
-    console.error("SMOLIX connection error:", error);
+    console.error("jetsale.online connection error:", error);
     showMessage(appMessage, error.message || "Ошибка подключения");
   } finally {
     connectButton.disabled = false;

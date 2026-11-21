@@ -453,7 +453,7 @@ export default function AdminPanel() {
               <ShieldCheck size={18} className="text-white" />
             </div>
             <div>
-              <p className="font-bold text-sm leading-none">SMOLIX Admin</p>
+              <p className="font-bold text-sm leading-none">jetsale.online Admin</p>
               <p className="admin-mono mt-1 break-all">{user.email}</p>
             </div>
           </div>
@@ -1367,7 +1367,7 @@ export default function AdminPanel() {
                         <span className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
                           node.isSupportedProxy ? 'bg-teal-500/15 text-teal-200' : 'bg-white/5 text-[var(--admin-text-soft)]'
                         }`}>
-                          {node.isSupportedProxy ? 'SMOLIX PROXY' : 'SQUAD'}
+                          {node.isSupportedProxy ? 'jetsale.online PROXY' : 'SQUAD'}
                         </span>
                       </div>
                     ))}
@@ -1505,7 +1505,7 @@ export default function AdminPanel() {
                   <p className="text-xs admin-muted">Панель управления</p>
                   <p className="font-bold text-lg mt-1">Remnawave</p>
                   <p className="text-xs admin-muted mt-2 max-w-xl">
-                    {remnawave?.contract.note || 'Связь SMOLIX → Remnawave API'}
+                    {remnawave?.contract.note || 'Связь jetsale.online → Remnawave API'}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1578,7 +1578,7 @@ export default function AdminPanel() {
                   <input
                     value={syncUserId}
                     onChange={(e) => setSyncUserId(e.target.value.trim())}
-                    placeholder="SMOLIX user UUID"
+                    placeholder="jetsale.online user UUID"
                     className="admin-input mt-2 h-11"
                   />
                 </div>
@@ -1636,7 +1636,7 @@ export default function AdminPanel() {
                             ? 'bg-teal-500/15 text-teal-200'
                             : 'bg-white/5 text-[var(--admin-text-soft)]'
                         }`}>
-                          {node.isSupportedProxy ? 'SMOLIX PROXY' : 'SQUAD'}
+                          {node.isSupportedProxy ? 'jetsale.online PROXY' : 'SQUAD'}
                         </span>
                       </div>
                     ))}

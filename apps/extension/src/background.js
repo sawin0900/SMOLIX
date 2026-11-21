@@ -1,4 +1,4 @@
-﻿const API_URLS = [
+const API_URLS = [
   "http://127.0.0.1:3001",
   "http://localhost:3001"
 ];
@@ -10,13 +10,13 @@ const PROXY_STORAGE_KEY = "smolixProxyCredentials";
 const PROXY_STARTED_AT_KEY = "smolixProxyStartedAt";
 const PROXY_MODE_KEY = "smolixProxyMode";
 
-console.log("SMOLIX background service worker started");
+console.log("jetsale.online background service worker started");
 
 async function getProxyCredentials(serverId, mode = "full") {
   const { smolixToken } = await chrome.storage.local.get("smolixToken");
 
   if (!smolixToken) {
-    throw new Error("Необходимо войти в аккаунт SMOLIX");
+    throw new Error("Необходимо войти в аккаунт jetsale.online");
   }
 
   const response = await fetch(
@@ -78,7 +78,7 @@ function buildFullModePac() {
         return "DIRECT";
       }
 
-      // Always keep SMOLIX control-plane / subscription page reachable directly
+      // Always keep jetsale.online control-plane / subscription page reachable directly
       if (h === "${PROXY_HOST}" || dnsDomainIs(h, ".jetsale.online")) {
         return "DIRECT";
       }
@@ -263,30 +263,30 @@ async function validateActiveAccess() {
       (!data.subscription?.status || data.subscription.status !== "ACTIVE")
     ) {
       await disconnect();
-      await showVpnNotification("SMOLIX Premium", "Активная подписка завершилась. Подключите Premium для полного интернета.");
+      await showVpnNotification("jetsale.online Premium", "Активная подписка завершилась. Подключите Premium для полного интернета.");
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("SMOLIX access validation error:", error);
+    console.error("jetsale.online access validation error:", error);
     return false;
   }
 }
 
 chrome.runtime.onStartup?.addListener(() => {
   syncActionFromProxyStatus().catch((error) => {
-    console.error("SMOLIX startup badge sync error:", error);
+    console.error("jetsale.online startup badge sync error:", error);
   });
 
   validateActiveAccess().catch((error) => {
-    console.error("SMOLIX startup access validation error:", error);
+    console.error("jetsale.online startup access validation error:", error);
   });
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   syncActionFromProxyStatus().catch((error) => {
-    console.error("SMOLIX install badge sync error:", error);
+    console.error("jetsale.online install badge sync error:", error);
   });
 
   chrome.alarms.create("smolix-access-check", {
@@ -298,7 +298,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== "smolix-access-check") return;
 
   validateActiveAccess().catch((error) => {
-    console.error("SMOLIX scheduled access validation error:", error);
+    console.error("jetsale.online scheduled access validation error:", error);
   });
 });
 
@@ -307,7 +307,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     connect(message.serverId, message.mode)
       .then(sendResponse)
       .catch((error) => {
-        console.error("SMOLIX CONNECT error:", error);
+        console.error("jetsale.online CONNECT error:", error);
 
         sendResponse({
           success: false,
@@ -323,7 +323,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     disconnect()
       .then(sendResponse)
       .catch((error) => {
-        console.error("SMOLIX DISCONNECT error:", error);
+        console.error("jetsale.online DISCONNECT error:", error);
 
         sendResponse({
           success: false,
@@ -438,7 +438,7 @@ chrome.webRequest.onAuthRequired.addListener(
         });
       })
       .catch((error) => {
-        console.error("SMOLIX proxy authentication error:", error);
+        console.error("jetsale.online proxy authentication error:", error);
         callback({ cancel: true });
       });
   },
@@ -446,25 +446,25 @@ chrome.webRequest.onAuthRequired.addListener(
   ["asyncBlocking"]
 );
 
-console.log("SMOLIX proxy authentication handler registered");
+console.log("jetsale.online proxy authentication handler registered");
 
 async function setActionState(state) {
   if (state === "connected") {
     await chrome.action.setBadgeText({ text: "ON" });
     await chrome.action.setBadgeBackgroundColor({ color: "#25C58B" });
-    await chrome.action.setTitle({ title: "SMOLIX VPN — подключён" });
+    await chrome.action.setTitle({ title: "jetsale.online VPN — подключён" });
     return;
   }
 
   if (state === "error") {
     await chrome.action.setBadgeText({ text: "!" });
     await chrome.action.setBadgeBackgroundColor({ color: "#ED5E78" });
-    await chrome.action.setTitle({ title: "SMOLIX VPN — ошибка подключения" });
+    await chrome.action.setTitle({ title: "jetsale.online VPN — ошибка подключения" });
     return;
   }
 
   await chrome.action.setBadgeText({ text: "" });
-  await chrome.action.setTitle({ title: "SMOLIX VPN — отключён" });
+  await chrome.action.setTitle({ title: "jetsale.online VPN — отключён" });
 }
 
 async function syncActionFromProxyStatus() {

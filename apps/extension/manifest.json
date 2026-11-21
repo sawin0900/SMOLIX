@@ -1,8 +1,8 @@
-﻿{
+{
   "manifest_version": 3,
-  "name": "SMOLIX VPN",
+  "name": "jetsale.online VPN",
   "version": "1.1.0",
-  "description": "Безопасный доступ к интернету через SMOLIX",
+  "description": "Безопасный доступ к интернету через jetsale.online",
   "icons": {
     "16": "public/icons/icon-16.png",
     "32": "public/icons/icon-32.png",
@@ -27,7 +27,7 @@
   },
   "action": {
     "default_popup": "public/popup-premium.html",
-    "default_title": "SMOLIX VPN",
+    "default_title": "jetsale.online VPN",
     "default_icon": {
       "16": "public/icons/icon-16.png",
       "32": "public/icons/icon-32.png",

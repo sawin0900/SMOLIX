@@ -4,17 +4,17 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '../dist')
-const siteUrl = (process.env.VITE_SITE_URL || 'https://smolix.app').replace(/\/+$/, '')
+const siteUrl = (process.env.VITE_SITE_URL || 'https://jetsale.online').replace(/\/+$/, '')
 
 const routes = [
   {
     file: 'index.html',
     path: '/',
-    title: 'SMOLIX — YouTube бесплатно, весь интернет с Premium',
+    title: 'jetsale.online — YouTube бесплатно, весь интернет с Premium',
     description:
-      'SMOLIX — защищённый доступ в браузере. YouTube бесплатно, полный интернет с Premium. Один аккаунт для сайта и расширения Chrome.',
+      'jetsale.online — защищённый доступ в браузере. YouTube бесплатно, полный интернет с Premium. Один аккаунт для сайта и расширения Chrome.',
     noscript: `
-      <h1>SMOLIX — YouTube бесплатно, весь интернет с Premium</h1>
+      <h1>jetsale.online — YouTube бесплатно, весь интернет с Premium</h1>
       <p>Защищённый доступ прямо в браузере. Создайте аккаунт, установите расширение и выберите режим.</p>
       <ul>
         <li><a href="/install">Установка расширения</a></li>
@@ -27,13 +27,13 @@ const routes = [
   {
     file: path.join('install', 'index.html'),
     path: '/install',
-    title: 'Установка SMOLIX VPN для Chrome',
+    title: 'Установка jetsale.online VPN для Chrome',
     description:
-      'Как установить расширение SMOLIX VPN в Chrome: создать аккаунт, загрузить unpacked extension и подключиться за минуту.',
+      'Как установить расширение jetsale.online VPN в Chrome: создать аккаунт, загрузить unpacked extension и подключиться за минуту.',
     noscript: `
-      <h1>Установка SMOLIX VPN для Chrome</h1>
+      <h1>Установка jetsale.online VPN для Chrome</h1>
       <ol>
-        <li>Создайте аккаунт SMOLIX</li>
+        <li>Создайте аккаунт jetsale.online</li>
         <li>Откройте chrome://extensions</li>
         <li>Загрузите папку apps/extension</li>
         <li>Войдите и подключитесь</li>
@@ -44,16 +44,16 @@ const routes = [
   {
     file: path.join('policy', 'index.html'),
     path: '/policy',
-    title: 'Политика конфиденциальности — SMOLIX',
-    description: 'Политика конфиденциальности SMOLIX: какие данные обрабатываются для сайта и расширения.',
-    noscript: `<h1>Политика конфиденциальности — SMOLIX</h1><p>Политика конфиденциальности сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
+    title: 'Политика конфиденциальности — jetsale.online',
+    description: 'Политика конфиденциальности jetsale.online: какие данные обрабатываются для сайта и расширения.',
+    noscript: `<h1>Политика конфиденциальности — jetsale.online</h1><p>Политика конфиденциальности сервиса jetsale.online.</p><p><a href="/">На главную</a></p>`,
   },
   {
     file: path.join('oferta', 'index.html'),
     path: '/oferta',
-    title: 'Публичная оферта — SMOLIX',
-    description: 'Публичная оферта SMOLIX: условия использования сайта, расширения и подписки Premium.',
-    noscript: `<h1>Публичная оферта — SMOLIX</h1><p>Условия использования сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
+    title: 'Публичная оферта — jetsale.online',
+    description: 'Публичная оферта jetsale.online: условия использования сайта, расширения и подписки Premium.',
+    noscript: `<h1>Публичная оферта — jetsale.online</h1><p>Условия использования сервиса jetsale.online.</p><p><a href="/">На главную</a></p>`,
   },
 ]
 

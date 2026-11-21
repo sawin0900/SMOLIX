@@ -68,7 +68,7 @@ async function loadAntifilterLists(): Promise<AntifilterCache> {
   for (const url of ANTIFILTER_URLS) {
     try {
       const response = await fetch(url, {
-        headers: { Accept: 'text/plain', 'User-Agent': 'SMOLIX-block-monitor/1.0' },
+        headers: { Accept: 'text/plain', 'User-Agent': 'jetsale.online-block-monitor/1.0' },
         signal: AbortSignal.timeout(25000),
       })
       if (!response.ok) continue
@@ -151,7 +151,7 @@ function defaultTargets(): Array<{ key: string; label: string; host: string; por
     .replace(/\/.*$/, '')
 
   return [
-    { key: 'proxy', label: 'SMOLIX Proxy', host: proxyHost, port: proxyPort, kind: 'proxy' },
+    { key: 'proxy', label: 'jetsale.online Proxy', host: proxyHost, port: proxyPort, kind: 'proxy' },
     { key: 'panel', label: 'Remnawave Panel', host: panelHost, port: 443, kind: 'panel' },
     { key: 'sub', label: 'Subscription page', host: subHost, port: 443, kind: 'sub' },
   ]

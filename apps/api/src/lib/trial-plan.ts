@@ -24,7 +24,7 @@ export async function ensureTrialPlan() {
     data: {
       slug: 'trial',
       name: 'Пробный период',
-      description: 'Бесплатный доступ к SMOLIX на 14 дней',
+      description: 'Бесплатный доступ к jetsale.online на 14 дней',
       price: 0,
       currency: 'RUB',
       durationDays: 14,

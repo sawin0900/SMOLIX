@@ -1,6 +1,6 @@
 {
-  "name": "SMOLIX",
-  "short_name": "SMOLIX",
+  "name": "jetsale.online",
+  "short_name": "jetsale",
   "description": "Защищённый доступ в браузере. YouTube бесплатно, весь интернет с Premium.",
   "start_url": "/",
   "display": "standalone",

@@ -194,10 +194,10 @@ export async function createRemnawaveUser(input: {
     status: 'ACTIVE' as const,
     email: input.email ?? null,
     expireAt: input.expireAt.toISOString(),
-    description: input.description ?? 'SMOLIX',
+    description: input.description ?? 'jetsale.online',
     trafficLimitStrategy: 'NO_RESET' as const,
     activeInternalSquads: [REMNAWAVE_SQUAD_UUID],
-    tag: 'SMOLIX',
+    tag: 'jetsale.online',
   }
 
   try {

@@ -214,7 +214,7 @@ const billingRoutes: FastifyPluginAsync = async (app) => {
       const payment = await createYooPayment({
         amount,
         currency: plan.currency,
-        description: `SMOLIX ${plan.name}`,
+        description: `jetsale.online ${plan.name}`,
         returnUrl: `${webAppUrl}/app/subscription?paid=1`,
         metadata: {
           orderId: order.id,

@@ -64,7 +64,7 @@ export default function StatusPage() {
           </div>
           <div>
             <p className="text-sm font-bold text-teal-700">Статус</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-[-0.6px]">SMOLIX Status</h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-[-0.6px]">jetsale.online Status</h1>
           </div>
         </div>
 

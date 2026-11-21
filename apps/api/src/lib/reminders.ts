@@ -53,8 +53,8 @@ export async function runSubscriptionReminders() {
 
     const site = webUrl()
     const subject = sub.isTrial
-      ? 'SMOLIX: пробный Premium скоро закончится'
-      : 'SMOLIX: Premium скоро закончится'
+      ? 'jetsale.online: пробный Premium скоро закончится'
+      : 'jetsale.online: Premium скоро закончится'
     const text = [
       `Здравствуйте!`,
       '',
@@ -64,7 +64,7 @@ export async function runSubscriptionReminders() {
       '',
       `Продлить: ${site}/app/subscription`,
       '',
-      'Команда SMOLIX',
+      'Команда jetsale.online',
     ].join('\n')
 
     await sendMail({ to: sub.user.email, subject, text })
@@ -96,14 +96,14 @@ export async function runSubscriptionReminders() {
     const site = webUrl()
     await sendMail({
       to: sub.user.email,
-      subject: 'SMOLIX: установите расширение, пока действует trial',
+      subject: 'jetsale.online: установите расширение, пока действует trial',
       text: [
         'У вас активен пробный Premium, но расширение ещё не входило в аккаунт.',
         '',
         `Инструкция: ${site}/install`,
         `Кабинет: ${site}/app`,
         '',
-        'Команда SMOLIX',
+        'Команда jetsale.online',
       ].join('\n'),
     })
     await markSent(sub.user.id, kind)

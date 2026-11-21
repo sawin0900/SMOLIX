@@ -8,7 +8,7 @@ import { getAccount, refreshVpnSubscription, type VpnAccountInfo } from '../api'
 
 const BROWSER_STEPS = [
   {
-    title: 'Создайте аккаунт SMOLIX',
+    title: 'Создайте аккаунт jetsale.online',
     text: 'Один email для сайта, расширения и приложений.',
   },
   {
@@ -84,7 +84,7 @@ export default function InstallPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
-    name: 'Подключение SMOLIX — браузер и устройства',
+    name: 'Подключение jetsale.online — браузер и устройства',
     description: SEO_PAGES.install.description,
     totalTime: 'PT5M',
     step: [...BROWSER_STEPS, ...DEVICE_STEPS].map((step, index) => ({
@@ -124,7 +124,7 @@ export default function InstallPage() {
         </div>
 
         <p className="text-[var(--muted)] leading-7 max-w-2xl">
-          Один аккаунт SMOLIX: расширение Chrome для вкладок и ссылка подписки для телефона, ПК, iPhone и Smart TV.
+          Один аккаунт jetsale.online: расширение Chrome для вкладок и ссылка подписки для телефона, ПК, iPhone и Smart TV.
         </p>
 
         <div className="mt-8 grid md:grid-cols-2 gap-4">
@@ -219,7 +219,7 @@ export default function InstallPage() {
               <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--canvas-band)]/50 p-4 flex flex-col sm:flex-row items-center gap-4">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=6&data=${encodeURIComponent(vpnAccount.subscriptionUrl)}`}
-                  alt="QR подписки SMOLIX"
+                  alt="QR подписки jetsale.online"
                   width={140}
                   height={140}
                   className="rounded-xl bg-white p-2"
@@ -239,7 +239,7 @@ export default function InstallPage() {
           <p className="font-bold mb-3">Проверьте после подключения</p>
           <ul className="space-y-2 text-sm text-[var(--muted)]">
             {[
-              'В Chrome есть иконка SMOLIX и вход тем же email',
+              'В Chrome есть иконка jetsale.online и вход тем же email',
               'YouTube в расширении работает без Premium',
               'На телефоне/TV клиент видит вашу подписку',
             ].map((item) => (

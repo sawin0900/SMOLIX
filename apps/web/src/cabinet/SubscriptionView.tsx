@@ -313,7 +313,7 @@ export function SubscriptionView({
             {premiumPlan ? `${premiumPlan.price} ${premiumPlan.currency === 'RUB' ? '₽' : premiumPlan.currency}` : '299 ₽'}/мес
           </p>
           <p className="text-sm text-[var(--muted)] mt-2">
-            Полный доступ через прокси SMOLIX
+            Полный доступ через прокси jetsale.online
             {premiumPlan?.deviceLimit ? ` · до ${premiumPlan.deviceLimit} устройств` : ''}.
           </p>
           <label className="block mt-5 text-sm font-semibold">

@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -15,7 +15,7 @@ async function main() {
       data: {
         slug: existing.slug || 'trial',
         name: 'Пробный период',
-        description: existing.description || 'Бесплатный доступ к SMOLIX на 14 дней',
+        description: existing.description || 'Бесплатный доступ к jetsale.online на 14 дней',
         price: 0,
         currency: 'RUB',
         durationDays: 14,
@@ -32,7 +32,7 @@ async function main() {
     data: {
       slug: 'trial',
       name: 'Пробный период',
-      description: 'Бесплатный доступ к SMOLIX на 14 дней',
+      description: 'Бесплатный доступ к jetsale.online на 14 дней',
       price: 0,
       currency: 'RUB',
       durationDays: 14,

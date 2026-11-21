@@ -1,4 +1,4 @@
-﻿import Fastify from 'fastify'
+import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import rateLimit from '@fastify/rate-limit'
@@ -252,7 +252,7 @@ app.get('/remnawave-health', async (request, reply) => {
 app.get('/health', async () => {
   return {
     status: 'ok',
-    service: 'SMOLIX API',
+    service: 'jetsale.online API',
     timestamp: new Date().toISOString(),
   }
 })
@@ -279,7 +279,7 @@ app.get('/db-health', async (request, reply) => {
 
 app.get('/', async () => {
   return {
-    name: 'SMOLIX API',
+    name: 'jetsale.online API',
     status: 'ok',
   }
 })

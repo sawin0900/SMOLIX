@@ -23,6 +23,7 @@ import {
   Gift,
 } from 'lucide-react'
 import { getAccount, getPublicStatus, joinWaitlist, type PublicStatus, type User } from '../api'
+import { SITE_NAME, SUPPORT_EMAIL } from '../brand'
 import SeoHead from '../components/SeoHead'
 import { SEO_PAGES, SITE_URL } from '../seo'
 import { CHROME_STORE_URL, IS_CHROME_STORE_LIVE } from '../config'
@@ -170,7 +171,7 @@ function ExtensionMockup({
 
   return (
     <div className={`hero-stage hero-stage-live ${smolixOn ? 'is-demo-on' : 'is-demo-off'}`}>
-      <div className="hero-demo-controls" role="group" aria-label={locale === 'ru' ? 'Демо SMOLIX' : 'SMOLIX demo'}>
+      <div className="hero-demo-controls" role="group" aria-label={locale === 'ru' ? 'Демо jetsale.online' : 'jetsale.online demo'}>
         <button
           type="button"
           className={`hero-demo-toggle ${!smolixOn ? 'is-active' : ''}`}
@@ -207,14 +208,14 @@ function ExtensionMockup({
           <span />
           <span />
           <span />
-          <div className="hero-mockup-url">smolix.app / extension</div>
+          <div className="hero-mockup-url">jetsale.online / extension</div>
         </div>
         <div className="hero-mockup-body">
           <div className="hero-mockup-brand">
             <div className="hero-mockup-mark">
               <ShieldCheck size={14} />
             </div>
-            <strong>SMOLIX</strong>
+            <strong>jetsale.online</strong>
             <em>{onlineLabel}</em>
           </div>
 
@@ -533,15 +534,15 @@ export default function Landing() {
     {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'SMOLIX',
+      name: SITE_NAME,
       url: SITE_URL,
       logo: `${SITE_URL}/favicon.svg`,
-      email: 'support@smolix.app',
+      email: SUPPORT_EMAIL,
     },
     {
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
-      name: 'SMOLIX VPN',
+      name: `${SITE_NAME} VPN`,
       applicationCategory: 'BrowserApplication',
       operatingSystem: 'Chrome',
       url: `${SITE_URL}/install`,
@@ -579,11 +580,11 @@ export default function Landing() {
 
       <header className={`landing-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="section-shell landing-nav-inner">
-          <a href="#top" className="flex items-center gap-3" aria-label="SMOLIX">
+          <a href="#top" className="flex items-center gap-3" aria-label={SITE_NAME}>
             <div className="w-10 h-10 rounded-2xl brand-gradient flex items-center justify-center shadow-lg shadow-teal-950/30">
               <ShieldCheck className="text-white" size={20} />
             </div>
-            <span className="text-lg font-extrabold tracking-[0.5px]">SMOLIX</span>
+            <span className="text-lg font-extrabold tracking-[0.5px]">{SITE_NAME}</span>
           </a>
 
           <nav className="hidden md:flex items-center gap-5 text-sm font-semibold" aria-label={locale === 'ru' ? 'Основная навигация' : 'Main navigation'}>
@@ -1142,7 +1143,7 @@ export default function Landing() {
               <div className="w-9 h-9 rounded-xl brand-gradient flex items-center justify-center">
                 <ShieldCheck className="text-white" size={18} />
               </div>
-              <span className="font-extrabold text-[var(--ink)]">SMOLIX</span>
+              <span className="font-extrabold text-[var(--ink)]">{SITE_NAME}</span>
             </div>
             <p className="mt-3 text-sm text-[var(--muted)] max-w-xs">
               {t.footerTagline}
@@ -1171,7 +1172,7 @@ export default function Landing() {
                 <li><Link to="/policy" className="hover:text-teal-800 transition">{t.footerPrivacy}</Link></li>
                 <li><Link to="/oferta" className="hover:text-teal-800 transition">{t.footerTerms}</Link></li>
                 <li><Link to="/status" className="hover:text-teal-800 transition">{t.footerStatus}</Link></li>
-                <li><a href="mailto:support@smolix.app" className="hover:text-teal-800 transition">support@smolix.app</a></li>
+                <li><a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-teal-800 transition">{SUPPORT_EMAIL}</a></li>
               </ul>
             </div>
           </div>

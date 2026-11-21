@@ -176,7 +176,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
 
     return {
       servers,
-      note: 'Список из каталога SMOLIX. Premium-прокси в расширении сейчас через одну поддерживаемую ноду Remnawave.',
+      note: 'Список из каталога jetsale.online. Premium-прокси в расширении сейчас через одну поддерживаемую ноду Remnawave.',
     }
   })
 
@@ -536,7 +536,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
         id: 'extension-offline',
         level: 'warning',
         title: 'Расширение не залогинено',
-        text: 'Нет активной сессии Chrome-расширения. Установите SMOLIX и войдите тем же email.',
+        text: 'Нет активной сессии Chrome-расширения. Установите jetsale.online и войдите тем же email.',
         href: '/install',
       })
     } else {

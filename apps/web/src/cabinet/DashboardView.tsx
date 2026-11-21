@@ -392,7 +392,7 @@ export function DashboardView({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-lg">Недавние подключения</h3>
-            <p className="text-xs text-[var(--muted)] mt-1">История из расширения SMOLIX</p>
+            <p className="text-xs text-[var(--muted)] mt-1">История из расширения jetsale.online</p>
           </div>
           <Link to="/app/history" className="text-xs font-bold text-teal-800 hover:underline">Все</Link>
         </div>

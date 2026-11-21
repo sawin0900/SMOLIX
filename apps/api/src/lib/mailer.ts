@@ -7,7 +7,7 @@ type SendMailInput = {
   html?: string
 }
 
-const fromAddress = process.env.MAIL_FROM || 'SMOLIX <noreply@smolix.app>'
+const fromAddress = process.env.MAIL_FROM || 'jetsale.online <info@jetsale.online>'
 
 function hasSmtpConfig() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
@@ -52,24 +52,24 @@ export async function sendMail(input: SendMailInput) {
 }
 
 export function premiumLaunchEmail(siteUrl: string) {
-  const subject = 'SMOLIX Premium уже доступен'
+  const subject = 'jetsale.online Premium уже доступен'
   const text = [
     'Привет!',
     '',
-    'Вы были в waitlist SMOLIX Premium — оплата и полный доступ уже подключены.',
+    'Вы были в waitlist jetsale.online Premium — оплата и полный доступ уже подключены.',
     '',
     `Открыть кабинет: ${siteUrl}/app/subscription`,
     '',
-    'Команда SMOLIX',
+    'Команда jetsale.online',
   ].join('\n')
 
   return { subject, text }
 }
 
 export function passwordResetEmail(resetUrl: string) {
-  const subject = 'Сброс пароля SMOLIX'
+  const subject = 'Сброс пароля jetsale.online'
   const text = [
-    'Вы запросили сброс пароля SMOLIX.',
+    'Вы запросили сброс пароля jetsale.online.',
     '',
     `Перейдите по ссылке (действует ограниченное время):`,
     resetUrl,
@@ -81,9 +81,9 @@ export function passwordResetEmail(resetUrl: string) {
 }
 
 export function emailVerificationEmail(verifyUrl: string) {
-  const subject = 'Подтвердите email SMOLIX'
+  const subject = 'Подтвердите email jetsale.online'
   const text = [
-    'Подтвердите адрес электронной почты для SMOLIX.',
+    'Подтвердите адрес электронной почты для jetsale.online.',
     '',
     verifyUrl,
     '',

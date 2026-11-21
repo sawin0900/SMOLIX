@@ -23,7 +23,7 @@ async function ensureVpnAccountRow(userId: string) {
 }
 
 /**
- * Ensures Remnawave panel user exists and expireAt/status match SMOLIX subscription.
+ * Ensures Remnawave panel user exists and expireAt/status match jetsale.online subscription.
  * Safe to call repeatedly (idempotent). Skips when Remnawave env is not configured.
  */
 export async function ensureRemnawaveProvisioned(userId: string) {
@@ -59,7 +59,7 @@ export async function ensureRemnawaveProvisioned(userId: string) {
         username,
         email: user.email,
         expireAt,
-        description: `SMOLIX ${user.email}`,
+        description: `jetsale.online ${user.email}`,
       })
     } catch (error) {
       // Race / already exists → re-fetch

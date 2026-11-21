@@ -682,7 +682,7 @@ $("authModeButton")?.addEventListener("click", () => {
   authMode = authMode === "login" ? "register" : "login";
   authFormStartedAt = Date.now();
   setText("authEyebrow", authMode === "register" ? "Новый аккаунт" : "С возвращением");
-  setText("authTitle", authMode === "register" ? "Создайте аккаунт" : "Войдите в SMOLIX");
+  setText("authTitle", authMode === "register" ? "Создайте аккаунт" : "Войдите в jetsale.online");
   setText("authSubmit", authMode === "register" ? "Зарегистрироваться" : "Войти");
   setText(
     "authModeButton",
@@ -728,7 +728,7 @@ $("authForm")?.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         email,
         password,
-        deviceName: "SMOLIX Chrome Extension",
+        deviceName: "jetsale.online Chrome Extension",
         deviceId,
       }),
     });

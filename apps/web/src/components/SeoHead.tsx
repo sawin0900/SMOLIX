@@ -28,13 +28,13 @@ export default function SeoHead({
       <link rel="canonical" href={url} />
 
       <meta property="og:type" content={type} />
-      <meta property="og:site_name" content="SMOLIX" />
+      <meta property="og:site_name" content="jetsale.online" />
       <meta property="og:locale" content="ru_RU" />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={image} />
-      <meta property="og:image:alt" content="SMOLIX — защищённый доступ в браузере" />
+      <meta property="og:image:alt" content="jetsale.online — защищённый доступ в браузере" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
 
@@ -42,7 +42,7 @@ export default function SeoHead({
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
-      <meta name="twitter:image:alt" content="SMOLIX" />
+      <meta name="twitter:image:alt" content="jetsale.online" />
 
       <meta name="theme-color" content="#0f766e" />
       <link rel="manifest" href="/site.webmanifest" />
@@ -55,8 +55,8 @@ export default function SeoHead({
       ))}
 
       <link rel="alternate" href={url} hrefLang="ru" />
-      <meta name="application-name" content="SMOLIX" />
-      <meta name="author" content="SMOLIX" />
+      <meta name="application-name" content="jetsale.online" />
+      <meta name="author" content="jetsale.online" />
       <link rel="home" href={SITE_URL} />
     </Helmet>
   )

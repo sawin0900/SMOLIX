@@ -78,7 +78,7 @@ export function SubscriptionLinkCard({
           <div className="rounded-2xl bg-white border border-[var(--border)] p-3 w-fit mx-auto md:mx-0">
             <img
               src={qrUrl(url)}
-              alt="QR код подписки SMOLIX"
+              alt="QR код подписки jetsale.online"
               width={200}
               height={200}
               className="rounded-xl"

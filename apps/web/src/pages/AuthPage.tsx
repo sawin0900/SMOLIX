@@ -196,7 +196,7 @@ export default function AuthPage() {
       : mode === 'forgot' ? 'Сброс пароля'
         : mode === 'reset' ? 'Новый пароль'
           : mode === 'verify-email' ? 'Подтверждение email'
-            : 'Войти в SMOLIX'
+            : 'Войти в jetsale.online'
 
   const subtitle =
     mode === 'register' ? 'Один аккаунт для сайта, расширения и устройств.'
@@ -277,7 +277,7 @@ export default function AuthPage() {
             <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center">
               <ShieldCheck size={22} />
             </div>
-            <span className="text-[22px] font-extrabold tracking-[-0.3px]">SMOLIX</span>
+            <span className="text-[22px] font-extrabold tracking-[-0.3px]">jetsale.online</span>
           </Link>
           <div className="relative z-10">
             <p className="text-xs font-bold tracking-wide text-white/70 mb-4 uppercase">Chrome · Phone · TV</p>

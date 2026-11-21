@@ -10,6 +10,7 @@ import {
   requestEmailVerification,
   type User,
 } from '../api'
+import { SUPPORT_EMAIL } from '../brand'
 import { CABINET_COPY } from '../i18n/cabinet'
 import type { Locale } from '../i18n/landing'
 import { formatDate } from './format'
@@ -72,11 +73,11 @@ export function SettingsView({
   }
 
   const supportMailto = useMemo(() => {
-    const subject = encodeURIComponent(`SMOLIX ${supportCode}`)
+    const subject = encodeURIComponent(`jetsale.online ${supportCode}`)
     const body = encodeURIComponent(
       `${en ? 'Email' : 'Email'}: ${user.email}\n${t.settingsUserId}: ${user.id}\n${t.settingsSupportCode}: ${supportCode}\n\n`,
     )
-    return `mailto:support@smolix.app?subject=${subject}&body=${body}`
+    return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`
   }, [user.email, user.id, supportCode, t, en])
 
   const requestVerify = async () => {
