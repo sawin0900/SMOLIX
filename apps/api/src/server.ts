@@ -324,6 +324,20 @@ try {
     host,
   })
   startBlockMonitorScheduler(app.log)
+
+  const { runSubscriptionReminders } = await import('./lib/reminders.js')
+  const reminderIntervalMs = Number(process.env.REMINDER_INTERVAL_MS || 60 * 60 * 1000)
+  const runReminders = () => {
+    void runSubscriptionReminders()
+      .then((result) => {
+        if (result.sent > 0) app.log.info(result, 'subscription reminders sent')
+      })
+      .catch((error) => {
+        app.log.error({ err: error }, 'reminder sweep failed')
+      })
+  }
+  runReminders()
+  setInterval(runReminders, Math.max(15 * 60 * 1000, reminderIntervalMs)).unref?.()
 } catch (error) {
   app.log.error(error)
   process.exit(1)

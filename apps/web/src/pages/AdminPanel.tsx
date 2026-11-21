@@ -36,6 +36,7 @@ import {
   revokeAdminSession,
   markAdminOrderPaid,
   refundAdminOrder,
+  impersonateAdminUser,
   logout,
   type User,
   type AdminStats,
@@ -51,6 +52,12 @@ import {
 } from '../api'
 import SeoHead from '../components/SeoHead'
 import { SEO_PAGES } from '../seo'
+import { AdminToast } from '../admin/AdminToast'
+import { exportOrdersCsv } from '../admin/exportOrdersCsv'
+import { formatDate } from '../admin/formatDate'
+import { formatAdminMoney } from '../admin/money'
+import { OverviewTab } from '../admin/OverviewTab'
+import { PaginationBar } from '../admin/PaginationBar'
 
 type Tab =
   | 'overview'
@@ -74,87 +81,6 @@ type AdminSearchResult = Awaited<ReturnType<typeof getAdminSearch>>
 type AdminPlanRow = Awaited<ReturnType<typeof getAdminPlans>>['plans'][number]
 type AdminCouponRow = Awaited<ReturnType<typeof getAdminCoupons>>['coupons'][number]
 type AuditItem = Awaited<ReturnType<typeof getAdminAudit>>['items'][number]
-
-function PaginationBar({
-  page,
-  totalPages,
-  onPage,
-}: {
-  page: number
-  totalPages: number
-  onPage: (page: number) => void
-}) {
-  const safeTotal = Math.max(totalPages, 1)
-  return (
-    <div className="px-5 py-3 border-t border-[var(--admin-border-soft)] flex items-center justify-between gap-3">
-      <button
-        type="button"
-        disabled={page <= 1}
-        onClick={() => onPage(page - 1)}
-        className="admin-btn text-xs disabled:opacity-40"
-      >
-        Назад
-      </button>
-      <span className="text-xs admin-muted">
-        Стр. {page} из {safeTotal}
-      </span>
-      <button
-        type="button"
-        disabled={page >= safeTotal}
-        onClick={() => onPage(page + 1)}
-        className="admin-btn text-xs disabled:opacity-40"
-      >
-        Далее
-      </button>
-    </div>
-  )
-}
-
-function exportOrdersCsv(orders: AdminOrder[]) {
-  const esc = (value: string) => `"${value.replace(/"/g, '""')}"`
-  const header = ['id', 'email', 'plan', 'amount', 'currency', 'status', 'createdAt', 'provider']
-  const rows = orders.map((o) => [
-    o.id,
-    o.user.email,
-    o.plan.name,
-    o.amount,
-    o.currency,
-    o.status,
-    o.createdAt,
-    o.payment?.provider ?? '',
-  ])
-  const csv = [header, ...rows].map((row) => row.map(esc).join(',')).join('\n')
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `smolix-orders-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function AdminToast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
-  useEffect(() => {
-    const id = window.setTimeout(onClose, 3000)
-    return () => window.clearTimeout(id)
-  }, [onClose, message])
-
-  return (
-    <div className={`admin-toast ${type === 'success' ? 'success' : 'error'}`} role="status">
-      {message}
-    </div>
-  )
-}
 
 export default function AdminPanel() {
   const navigate = useNavigate()
@@ -378,12 +304,7 @@ export default function AdminPanel() {
     }
   }
 
-  const money = (value?: string | null) => {
-    if (value == null) return '—'
-    const num = Number(value)
-    if (Number.isNaN(num)) return value
-    return `${num.toLocaleString('ru-RU')} ₽`
-  }
+  const money = formatAdminMoney
 
   useEffect(() => {
     let active = true
@@ -463,7 +384,6 @@ export default function AdminPanel() {
     }
   }
 
-  const remnawaveByEmail = useMemo(() => remnawave?.nodes ?? [], [remnawave])
   const filteredAlerts = useMemo(
     () => (alertSeverity === 'ALL' ? alerts : alerts.filter((item) => item.severity === alertSeverity)),
     [alerts, alertSeverity],
@@ -643,92 +563,14 @@ export default function AdminPanel() {
 
         <main className="min-w-0">
           {tab === 'overview' && (
-            <div className="space-y-4">
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {([
-                  { label: 'Пользователи', value: stats?.users, Icon: Users },
-                  { label: 'Premium сейчас', value: stats?.premiumActive ?? '—', Icon: CreditCard },
-                  { label: 'Trial сейчас', value: stats?.trialActive, Icon: CreditCard },
-                  { label: 'Оплаченных заказов', value: stats?.paidOrders, Icon: Receipt },
-                  { label: 'Выручка всё время', value: money(stats?.payments?.revenueAll), Icon: Receipt },
-                  { label: 'Выручка 30 дней', value: money(stats?.payments?.revenue30d), Icon: Receipt },
-                  { label: 'Выручка сегодня', value: money(stats?.payments?.revenueToday), Icon: Receipt },
-                  { label: 'Средний чек', value: money(stats?.payments?.avgCheck), Icon: CreditCard },
-                  { label: 'Сессии', value: stats?.sessions, Icon: MonitorSmartphone },
-                  { label: 'Лист ожидания', value: stats?.waitlistPending ?? waitlistPending, Icon: Mail },
-                  { label: 'Открытые алерты', value: stats?.openAlerts ?? openAlerts, Icon: Bell },
-                  { label: 'Remnawave ноды', value: remnawave?.nodesCount, Icon: Network },
-                ] as const).map(({ label, value, Icon }) => (
-                  <div key={label} className="admin-card p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs admin-muted">{label}</p>
-                      <Icon size={16} className="text-teal-300" />
-                    </div>
-                    <p className="text-2xl font-extrabold mt-3">{value ?? '—'}</p>
-                  </div>
-                ))}
-              </div>
-
-              {retention && (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                  {([
-                    { label: 'Регистрации 7д', value: retention.registered7 },
-                    { label: 'Регистрации 30д', value: retention.registered30 },
-                    { label: 'Вход в расширение 7д', value: retention.extensionLogin7 },
-                    { label: 'Оплаты 7д', value: retention.paid7 },
-                    { label: 'Оплаты 30д', value: retention.paid30 },
-                    { label: 'Trial активны', value: retention.trialActive },
-                    { label: 'Waitlist ожидают', value: retention.waitlist.pending },
-                    { label: 'Waitlist уведомлены', value: retention.waitlist.notified },
-                  ] as const).map(({ label, value }) => (
-                    <div key={label} className="admin-card p-4">
-                      <p className="text-xs admin-muted">{label}</p>
-                      <p className="text-xl font-extrabold mt-2">{value ?? '—'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {stats?.payments && (
-                <div className="grid lg:grid-cols-2 gap-4">
-                  <div className="admin-card p-5">
-                    <p className="font-bold">Воронка заказов</p>
-                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                      <div><p className="admin-muted text-xs">Создано</p><p className="font-extrabold text-xl mt-1">{stats.payments.funnel.created}</p></div>
-                      <div><p className="admin-muted text-xs">Pending</p><p className="font-extrabold text-xl mt-1">{stats.payments.funnel.pending}</p></div>
-                      <div><p className="admin-muted text-xs">Paid</p><p className="font-extrabold text-xl mt-1 text-emerald-300">{stats.payments.funnel.paid}</p></div>
-                      <div><p className="admin-muted text-xs">Cancelled</p><p className="font-extrabold text-xl mt-1">{stats.payments.funnel.cancelled}</p></div>
-                      <div><p className="admin-muted text-xs">Refunded</p><p className="font-extrabold text-xl mt-1">{stats.payments.funnel.refunded}</p></div>
-                      <div><p className="admin-muted text-xs">Paid за 7д</p><p className="font-extrabold text-xl mt-1">{stats.payments.paid7d}</p></div>
-                    </div>
-                    <p className="text-xs admin-muted mt-4">
-                      Trial → paid: {stats.payments.paidFromTrial} из {stats.payments.trialUsers} ({stats.payments.trialToPaidRate}%)
-                    </p>
-                  </div>
-                  <div className="admin-card p-5 overflow-hidden">
-                    <p className="font-bold">Выручка по дням (30д)</p>
-                    <div className="mt-3 max-h-56 overflow-auto">
-                      <div className="admin-grid-head grid-cols-[1fr_auto_auto]">
-                        <span>День</span>
-                        <span>Оплат</span>
-                        <span>Сумма</span>
-                      </div>
-                      {[...stats.payments.revenueByDay].reverse().map((day) => (
-                        <div key={day.date} className="admin-table-row px-0 py-2 grid grid-cols-[1fr_auto_auto] gap-3 text-sm">
-                          <span className="admin-mono">{day.date}</span>
-                          <span className="text-right">{day.count}</span>
-                          <span className="text-right font-semibold">{money(day.amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="admin-card p-5 text-sm admin-muted">
-                Runtime локации: Remnawave ({remnawaveByEmail.length}). Каталог кабинета: таблица Server ({servers.length}).
-              </div>
-            </div>
+            <OverviewTab
+              stats={stats}
+              retention={retention}
+              remnawave={remnawave}
+              openAlerts={openAlerts}
+              waitlistPending={waitlistPending}
+              servers={servers}
+            />
           )}
 
           {tab === 'alerts' && (
@@ -1040,6 +882,19 @@ export default function AdminPanel() {
                             className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-teal-500/30 text-teal-200 hover:bg-teal-500/10 disabled:opacity-60"
                           >
                             Синх. Remnawave
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actionBusy === `imp-${item.id}`}
+                            onClick={() => runAction(`imp-${item.id}`, async () => {
+                              const res = await impersonateAdminUser(item.id)
+                              await navigator.clipboard.writeText(res.url)
+                              window.open(res.url, '_blank', 'noopener,noreferrer')
+                              return `${res.message}. Ссылка скопирована`
+                            })}
+                            className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-100 hover:bg-amber-500/10 disabled:opacity-60"
+                          >
+                            Просмотр кабинета
                           </button>
                           {item.vpnAccount?.subscriptionUrl && (
                             <>

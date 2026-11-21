@@ -80,14 +80,37 @@ model User {
 }
 
 model Session {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  tokenHash String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  tokenHash       String   @unique
+  expiresAt       DateTime
+  impersonatedBy  String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+model ReminderLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  kind      String   @db.VarChar(64)
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, kind])
+  @@index([kind, sentAt])
+}
+
+model ImpersonationToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  tokenHash    String    @unique
+  targetUserId String    @db.Uuid
+  actorId      String    @db.Uuid
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+
   @@index([expiresAt])
 }
 

@@ -5,6 +5,16 @@ import { prisma } from '../lib/prisma.js'
 import { getActiveSubscription } from '../lib/subscription.js'
 import { ensureRemnawaveProvisioned } from '../lib/vpn-provision.js'
 import { ensureSupportCode } from '../lib/audit.js'
+import type { FastifyReply } from 'fastify'
+
+function rejectIfImpersonating(
+  user: { impersonatedBy?: string | null },
+  reply: FastifyReply,
+) {
+  if (!user.impersonatedBy) return false
+  reply.code(403).send({ error: 'Действие недоступно в режиме просмотра саппорта' })
+  return true
+}
 
 const accountRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async (request, reply) => {
@@ -69,6 +79,19 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
         })
       : null
 
+    const latestExtension = await prisma.extensionSession.findFirst({
+      where: { userId: user.id },
+      orderBy: [{ lastUsedAt: 'desc' }, { createdAt: 'desc' }],
+      select: { id: true, lastUsedAt: true, createdAt: true, revokedAt: true, expiresAt: true, deviceName: true },
+    })
+
+    const extensionLinked = deviceCount > 0
+    const lastUsedAt = latestExtension?.lastUsedAt || latestExtension?.createdAt || null
+    const staleMs = 7 * 86400000
+    const extensionStale = Boolean(
+      lastUsedAt && Date.now() - new Date(lastUsedAt).getTime() > staleMs,
+    )
+
     return {
       user: {
         id: user.id,
@@ -103,6 +126,15 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
         activeCount: deviceCount,
         deviceLimit: subscription?.plan?.deviceLimit ?? 1,
       },
+      extension: {
+        linked: extensionLinked,
+        stale: extensionStale && !extensionLinked ? false : extensionStale,
+        lastUsedAt,
+        deviceName: latestExtension?.deviceName ?? null,
+      },
+      impersonation: user.impersonatedBy
+        ? { active: true, actorId: user.impersonatedBy }
+        : { active: false },
       lastConnection: lastConnection
         ? {
             status: lastConnection.status,
@@ -211,6 +243,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!user || user.status !== 'ACTIVE') {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
+    if (rejectIfImpersonating(user, reply)) return
 
     try {
       const result = await ensureRemnawaveProvisioned(user.id)
@@ -306,6 +339,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!user || user.status !== 'ACTIVE') {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
+    if (rejectIfImpersonating(user, reply)) return
 
     const result = await prisma.extensionSession.updateMany({
       where: {
@@ -327,6 +361,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!user || user.status !== 'ACTIVE') {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
+    if (rejectIfImpersonating(user, reply)) return
 
     const params = z.object({ deviceId: z.string().uuid() }).safeParse(request.params)
     if (!params.success) {
@@ -431,7 +466,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
 
-    const [subscription, devices, pendingOrder, overviewDevices] = await Promise.all([
+    const [subscription, devices, pendingOrder, overviewDevices, latestExt] = await Promise.all([
       getActiveSubscription(user.id),
       prisma.extensionSession.count({
         where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -449,9 +484,24 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
           : null
         return plan?.plan.deviceLimit ?? 1
       }),
+      prisma.extensionSession.findFirst({
+        where: { userId: user.id },
+        orderBy: [{ lastUsedAt: 'desc' }, { createdAt: 'desc' }],
+        select: { lastUsedAt: true, createdAt: true },
+      }),
     ])
 
     const notices: Array<{ id: string; level: 'info' | 'warning' | 'critical'; title: string; text: string; href?: string }> = []
+
+    if (user.impersonatedBy) {
+      notices.push({
+        id: 'impersonation',
+        level: 'warning',
+        title: 'Режим просмотра саппорта',
+        text: 'Вы смотрите кабинет от имени пользователя. Оплата и смена пароля недоступны.',
+        href: '/app',
+      })
+    }
 
     if (!user.emailVerifiedAt) {
       notices.push({
@@ -483,12 +533,23 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
 
     if (devices === 0) {
       notices.push({
-        id: 'extension',
-        level: 'info',
-        title: 'Установите расширение',
-        text: 'Войдите в Chrome-расширение тем же email.',
+        id: 'extension-offline',
+        level: 'warning',
+        title: 'Расширение не залогинено',
+        text: 'Нет активной сессии Chrome-расширения. Установите SMOLIX и войдите тем же email.',
         href: '/install',
       })
+    } else {
+      const last = latestExt?.lastUsedAt || latestExt?.createdAt
+      if (last && Date.now() - new Date(last).getTime() > 7 * 86400000) {
+        notices.push({
+          id: 'extension-stale',
+          level: 'info',
+          title: 'Расширение давно не использовалось',
+          text: 'Последний вход в popup был больше 7 дней назад — откройте расширение и подключитесь.',
+          href: '/install',
+        })
+      }
     }
 
     const deviceLimit = overviewDevices
@@ -572,6 +633,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!user || user.status !== 'ACTIVE') {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
+    if (rejectIfImpersonating(user, reply)) return
 
     const params = z.object({ sessionId: z.string().uuid() }).safeParse(request.params)
     if (!params.success) {
@@ -590,6 +652,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!user || user.status !== 'ACTIVE') {
       return reply.code(401).send({ error: 'Требуется авторизация' })
     }
+    if (rejectIfImpersonating(user, reply)) return
 
     const token = request.cookies?.[COOKIE_NAME]
     if (!token) {

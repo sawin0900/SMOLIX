@@ -23,6 +23,39 @@
       </button>
     </header>
 
+    <section id="onboardingScreen" class="screen" hidden>
+      <div class="auth-heading">
+        <p class="eyebrow">Быстрый старт</p>
+        <h1>Три шага до защиты</h1>
+        <p>Один аккаунт для браузера, телефона и TV.</p>
+      </div>
+      <ol class="onboard-steps" id="onboardSteps">
+        <li class="onboard-step">
+          <span class="onboard-num">1</span>
+          <div>
+            <strong>Войдите в аккаунт</strong>
+            <p>Тот же email, что в кабинете SMOLIX.</p>
+          </div>
+        </li>
+        <li class="onboard-step">
+          <span class="onboard-num">2</span>
+          <div>
+            <strong>Выберите режим</strong>
+            <p>YouTube бесплатно или весь интернет с Premium.</p>
+          </div>
+        </li>
+        <li class="onboard-step">
+          <span class="onboard-num">3</span>
+          <div>
+            <strong>Нажмите «Подключить»</strong>
+            <p>Статус появится в кабинете и в истории.</p>
+          </div>
+        </li>
+      </ol>
+      <button class="primary-button" id="onboardContinue" type="button">Войти и начать</button>
+      <button class="text-button" id="onboardSkip" type="button">Уже знаю, как пользоваться</button>
+    </section>
+
     <section id="authScreen" class="screen" hidden>
       <div class="auth-heading">
         <p class="eyebrow" id="authEyebrow">С возвращением</p>
@@ -84,6 +117,12 @@
           <span>Весь интернет</span>
           <small>Premium</small>
         </button>
+      </div>
+
+      <div class="onboard-tip" id="firstConnectTip" hidden>
+        <strong>Первое подключение</strong>
+        <p>Выберите YouTube или «Весь интернет», затем нажмите кнопку ниже.</p>
+        <button class="text-button" id="dismissFirstTip" type="button">Понятно</button>
       </div>
 
       <div class="connection-panel" id="connectionPanel">

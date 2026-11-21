@@ -2,6 +2,7 @@ const API_URLS = ["http://127.0.0.1:3001", "http://localhost:3001"];
 const $ = (id) => document.getElementById(id);
 
 const screens = {
+  onboarding: $("onboardingScreen"),
   auth: $("authScreen"),
   recovery: $("recoveryScreen"),
   main: $("mainScreen"),
@@ -11,6 +12,9 @@ const screens = {
   servers: $("serversScreen"),
   devices: $("devicesScreen"),
 };
+
+const ONBOARD_SEEN_KEY = "smolixOnboardSeen";
+const FIRST_TIP_KEY = "smolixFirstConnectTipDismissed";
 
 const COUNTRY_FLAGS = {
   Россия: "🇷🇺",
@@ -318,10 +322,15 @@ async function checkSession() {
   if (!token) {
     subscriptionCard?.classList.remove("loading");
     locationButton?.classList.remove("loading");
-    showScreen("auth");
     const settings = $("settingsButton");
     if (settings) settings.hidden = true;
     setAuthProxyBanner(await hasActiveProxy());
+    const seen = await chrome.storage.local.get(ONBOARD_SEEN_KEY);
+    if (!seen[ONBOARD_SEEN_KEY]) {
+      showScreen("onboarding");
+    } else {
+      showScreen("auth");
+    }
     return;
   }
 
@@ -332,6 +341,9 @@ async function checkSession() {
     renderSubscription(data.subscription);
     showScreen("main");
     setOfflineBanner(false);
+    const tipState = await chrome.storage.local.get(FIRST_TIP_KEY);
+    const tip = $("firstConnectTip");
+    if (tip) tip.hidden = tipState[FIRST_TIP_KEY] === true;
     await loadServers(token);
     await restoreProxyStatus();
     updateConnectButtonAvailability();
@@ -995,6 +1007,26 @@ $("autoConnectToggle")?.addEventListener("change", async (event) => {
     event.target.checked ? "Автоподключение включено" : "Автоподключение отключено",
     "success"
   );
+});
+
+async function markOnboardSeen() {
+  await chrome.storage.local.set({ [ONBOARD_SEEN_KEY]: true });
+}
+
+$("onboardContinue")?.addEventListener("click", async () => {
+  await markOnboardSeen();
+  showScreen("auth");
+});
+
+$("onboardSkip")?.addEventListener("click", async () => {
+  await markOnboardSeen();
+  showScreen("auth");
+});
+
+$("dismissFirstTip")?.addEventListener("click", async () => {
+  await chrome.storage.local.set({ [FIRST_TIP_KEY]: true });
+  const tip = $("firstConnectTip");
+  if (tip) tip.hidden = true;
 });
 
 showScreen("auth");

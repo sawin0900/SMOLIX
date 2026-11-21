@@ -22,6 +22,7 @@ import {
   verifyTurnstileToken,
 } from '../lib/antibot.js'
 import { ensureSupportCode } from '../lib/audit.js'
+import { consumeImpersonationToken } from '../lib/impersonation.js'
 import { getSessionUser } from '../lib/session.js'
 import {
   authDelay,
@@ -69,9 +70,9 @@ function cookieOptions() {
   }
 }
 
-async function createSession(userId: string) {
+async function createSession(userId: string, impersonatedBy?: string | null) {
   const token = randomBytes(32).toString('base64url')
-  const expiresAt = new Date(Date.now() + SESSION_SECONDS * 1000)
+  const expiresAt = new Date(Date.now() + (impersonatedBy ? 60 * 60 * 1000 : SESSION_SECONDS * 1000))
 
   const existing = await prisma.session.findMany({
     where: { userId },
@@ -79,7 +80,7 @@ async function createSession(userId: string) {
     select: { id: true },
   })
 
-  if (existing.length >= MAX_WEB_SESSIONS) {
+  if (!impersonatedBy && existing.length >= MAX_WEB_SESSIONS) {
     const toDelete = existing.slice(0, existing.length - MAX_WEB_SESSIONS + 1)
     await prisma.session.deleteMany({
       where: { id: { in: toDelete.map((item) => item.id) } },
@@ -91,6 +92,7 @@ async function createSession(userId: string) {
       userId,
       tokenHash: hashToken(token),
       expiresAt,
+      impersonatedBy: impersonatedBy || null,
     },
   })
 
@@ -500,6 +502,10 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(401).send({ error: 'Сессия истекла' })
     }
 
+    if (session.impersonatedBy) {
+      return reply.code(403).send({ error: 'Смена пароля недоступна в режиме просмотра саппорта' })
+    }
+
     const valid = await argon2.verify(session.user.passwordHash, parsed.data.currentPassword)
 
     if (!valid) {
@@ -691,6 +697,42 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     ])
 
     return { message: 'Email подтверждён' }
+  })
+
+  app.post('/impersonate/consume', {
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
+    const parsed = z.object({ token: z.string().min(20).max(200) }).safeParse(request.body)
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Некорректный токен' })
+    }
+
+    const row = await consumeImpersonationToken(parsed.data.token)
+    if (!row) {
+      return reply.code(400).send({ error: 'Ссылка недействительна или истекла' })
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: row.targetUserId } })
+    if (!target || target.status !== 'ACTIVE') {
+      return reply.code(400).send({ error: 'Пользователь недоступен' })
+    }
+
+    const sessionToken = await createSession(target.id, row.actorId)
+    reply.setCookie(COOKIE_NAME, sessionToken, {
+      ...cookieOptions(),
+      maxAge: 60 * 60,
+    })
+
+    return {
+      message: 'Режим просмотра аккаунта включён',
+      impersonation: true,
+      user: {
+        id: target.id,
+        email: target.email,
+        status: target.status,
+        role: target.role,
+      },
+    }
   })
 }
 

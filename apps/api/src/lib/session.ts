@@ -47,7 +47,11 @@ export async function getSessionUser(request: FastifyRequest) {
     return null
   }
 
-  return session.user
+  return {
+    ...session.user,
+    sessionId: session.id,
+    impersonatedBy: session.impersonatedBy,
+  }
 }
 
 export { COOKIE_NAME, hashToken }

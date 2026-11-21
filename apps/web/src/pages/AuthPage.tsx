@@ -9,6 +9,7 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   confirmEmailVerification,
+  consumeImpersonation,
 } from '../api'
 import SeoHead from '../components/SeoHead'
 import { SEO_PAGES } from '../seo'
@@ -92,6 +93,35 @@ export default function AuthPage() {
       cancelled = true
     }
   }, [mode, verifyEmailToken])
+
+  useEffect(() => {
+    if (params.get('mode') !== 'impersonate') return
+    const token = params.get('token') || ''
+    if (!token) {
+      setError('Ссылка просмотра неполная')
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    setInfo('Открываем кабинет пользователя…')
+    consumeImpersonation(token)
+      .then(() => {
+        if (!cancelled) navigate('/app', { replace: true })
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setInfo('')
+          setError(err instanceof Error ? err.message : 'Не удалось открыть кабинет')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [params, navigate])
 
   useEffect(() => {
     getRegisterAntibot()

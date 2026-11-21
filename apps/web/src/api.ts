@@ -114,6 +114,13 @@ export type AdminStats = {
   trialActive?: number
   openAlerts?: number
   payments?: AdminPaymentStats
+  antibot?: {
+    window: string
+    byKind: Record<string, number>
+    registerOk: number
+    honeypot: number
+    disposable: number
+  }
 }
 
 export type AdminUserDetail = {
@@ -400,6 +407,13 @@ export type AccountOverview = {
     deviceLimit?: number
   } | null
   devices: { activeCount: number; deviceLimit?: number }
+  extension?: {
+    linked: boolean
+    stale: boolean
+    lastUsedAt: string | null
+    deviceName: string | null
+  }
+  impersonation?: { active: boolean; actorId?: string }
   lastConnection: {
     status: string
     mode: string
@@ -828,6 +842,20 @@ export function markAdminOrderPaid(orderId: string) {
   return request<{ message: string }>(`/admin/orders/${orderId}/mark-paid`, {
     method: 'POST',
     body: JSON.stringify({}),
+  })
+}
+
+export function impersonateAdminUser(userId: string) {
+  return request<{ message: string; url: string; expiresAt: string }>(`/admin/users/${userId}/impersonate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function consumeImpersonation(token: string) {
+  return request<{ message: string; impersonation: boolean; user: User }>('/auth/impersonate/consume', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
   })
 }
 

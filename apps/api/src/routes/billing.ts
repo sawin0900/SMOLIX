@@ -118,6 +118,10 @@ const billingRoutes: FastifyPluginAsync = async (app) => {
     const user = await requireUser(request, reply)
     if (!user) return
 
+    if ((user as { impersonatedBy?: string | null }).impersonatedBy) {
+      return reply.code(403).send({ error: 'Оплата недоступна в режиме просмотра саппорта' })
+    }
+
     const parsed = checkoutSchema.safeParse(request.body)
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Укажите тариф' })

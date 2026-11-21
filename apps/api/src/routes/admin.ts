@@ -8,6 +8,7 @@ import { extendActiveSubscription } from '../lib/subscription.js'
 import { runBlockMonitor } from '../lib/block-monitor.js'
 import { ensureSupportCode, writeAdminAudit } from '../lib/audit.js'
 import { isDestructiveAllowed, requireAdminOnly, requireStaff } from '../lib/admin-auth.js'
+import { createImpersonationToken } from '../lib/impersonation.js'
 import { z } from 'zod'
 
 async function requireAdmin(request: any, reply: any) {
@@ -58,6 +59,7 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       everTrialUsers,
       paidUserIds,
       recentPaid,
+      signupEvents7d,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.subscription.count({ where: { status: 'ACTIVE' } }),
@@ -93,6 +95,11 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
         where: { status: 'PAID', createdAt: { gte: d30 } },
         select: { amount: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
+      }),
+      prisma.signupEvent.groupBy({
+        by: ['kind'],
+        where: { createdAt: { gte: d7 } },
+        _count: { _all: true },
       }),
     ])
 
@@ -159,6 +166,56 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
         trialToPaidRate,
         revenueByDay,
       },
+      antibot: {
+        window: '7d',
+        byKind: Object.fromEntries(
+          signupEvents7d.map((row) => [row.kind, row._count._all]),
+        ),
+        registerOk: signupEvents7d.find((row) => row.kind === 'register_ok')?._count._all ?? 0,
+        honeypot: signupEvents7d.find((row) => row.kind === 'honeypot')?._count._all ?? 0,
+        disposable: signupEvents7d.find((row) => row.kind === 'disposable')?._count._all ?? 0,
+      },
+    }
+  })
+
+  app.post('/users/:userId/impersonate', async (request, reply) => {
+    const actor = await requireStaff(request, reply)
+    if (reply.sent || !actor) return
+
+    const params = z.object({ userId: z.string().uuid() }).safeParse(request.params)
+    if (!params.success) {
+      return reply.code(400).send({ error: 'Укажите userId' })
+    }
+    if (params.data.userId === actor.id) {
+      return reply.code(400).send({ error: 'Нельзя открыть свой аккаунт через impersonation' })
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: params.data.userId },
+      select: { id: true, email: true, status: true, role: true },
+    })
+    if (!target) return reply.code(404).send({ error: 'Пользователь не найден' })
+    if (target.status !== 'ACTIVE') {
+      return reply.code(400).send({ error: 'Пользователь не активен' })
+    }
+    if (target.role === 'ADMIN' && actor.role !== 'ADMIN') {
+      return reply.code(403).send({ error: 'Нельзя открыть кабинет ADMIN' })
+    }
+
+    const { token, expiresAt } = await createImpersonationToken(actor.id, target.id)
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'user.impersonate',
+      targetType: 'user',
+      targetId: target.id,
+    })
+
+    const webAppUrl = (process.env.WEB_APP_URL || 'http://127.0.0.1:5173').replace(/\/+$/, '')
+    return {
+      message: 'Ссылка для просмотра кабинета создана (10 минут)',
+      url: `${webAppUrl}/auth?mode=impersonate&token=${token}`,
+      expiresAt,
     }
   })
 
@@ -1110,6 +1167,9 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       }
     })
     await activatePaidSubscription(order.userId, order.planId, order.plan.durationDays)
+
+    const { tryFulfillReferralForUser } = await import('../lib/referral.js')
+    await tryFulfillReferralForUser(order.userId).catch(() => null)
 
     await writeAdminAudit({
       actorId: actor.id,
