@@ -552,6 +552,20 @@ export function notifyAdminWaitlist() {
   })
 }
 
+export function sendAdminMailBroadcast(data: {
+  subject: string
+  title: string
+  lead: string
+  ctaLabel?: string
+  ctaPath?: string
+  audience: 'all' | 'premium' | 'trial' | 'me'
+}) {
+  return request<{ message: string; sent: number; audience: string }>('/admin/mail/broadcast', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 export type AdminRemnawave = {
   status: 'ok' | 'error'
   panelUrl: string | null

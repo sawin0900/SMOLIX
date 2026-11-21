@@ -26,6 +26,7 @@ import {
   ackAdminAlert,
   resolveAdminAlert,
   notifyAdminWaitlist,
+  sendAdminMailBroadcast,
   getAdminRemnawave,
   syncAdminRemnawaveUser,
   updateAdminUserStatus,
@@ -110,6 +111,13 @@ export default function AdminPanel() {
   const [waitlistPending, setWaitlistPending] = useState(0)
   const [waitlistPendingOnly, setWaitlistPendingOnly] = useState(false)
   const [notifyBusy, setNotifyBusy] = useState(false)
+  const [mailSubject, setMailSubject] = useState('Новости jetsale.online')
+  const [mailTitle, setMailTitle] = useState('Обновление сервиса')
+  const [mailLead, setMailLead] = useState('')
+  const [mailCtaLabel, setMailCtaLabel] = useState('Открыть кабинет')
+  const [mailCtaPath, setMailCtaPath] = useState('/app')
+  const [mailAudience, setMailAudience] = useState<'me' | 'trial' | 'premium' | 'all'>('me')
+  const [mailBusy, setMailBusy] = useState(false)
   const [remnawave, setRemnawave] = useState<AdminRemnawave | null>(null)
   const [syncUserId, setSyncUserId] = useState('')
   const [syncBusy, setSyncBusy] = useState(false)
@@ -1429,6 +1437,80 @@ export default function AdminPanel() {
           )}
 
           {tab === 'waitlist' && (
+            <div className="space-y-4">
+            <div className="admin-card p-5 space-y-3">
+              <div>
+                <p className="font-bold">Рассылка (брендированные письма)</p>
+                <p className="text-xs admin-muted mt-1">
+                  Сначала отправьте себе (audience = me), затем trial / premium / all. До 500 получателей за раз.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <label className="block text-xs admin-muted">
+                  Тема
+                  <input className="admin-input mt-1 w-full" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} />
+                </label>
+                <label className="block text-xs admin-muted">
+                  Заголовок
+                  <input className="admin-input mt-1 w-full" value={mailTitle} onChange={(e) => setMailTitle(e.target.value)} />
+                </label>
+              </div>
+              <label className="block text-xs admin-muted">
+                Текст
+                <textarea
+                  className="admin-input mt-1 w-full min-h-[120px]"
+                  value={mailLead}
+                  onChange={(e) => setMailLead(e.target.value)}
+                  placeholder="Короткое сообщение пользователям…"
+                />
+              </label>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <label className="block text-xs admin-muted">
+                  Кнопка
+                  <input className="admin-input mt-1 w-full" value={mailCtaLabel} onChange={(e) => setMailCtaLabel(e.target.value)} />
+                </label>
+                <label className="block text-xs admin-muted">
+                  Ссылка (path)
+                  <input className="admin-input mt-1 w-full" value={mailCtaPath} onChange={(e) => setMailCtaPath(e.target.value)} />
+                </label>
+                <label className="block text-xs admin-muted">
+                  Кому
+                  <select
+                    className="admin-input mt-1 w-full"
+                    value={mailAudience}
+                    onChange={(e) => setMailAudience(e.target.value as typeof mailAudience)}
+                  >
+                    <option value="me">Только себе (тест)</option>
+                    <option value="trial">Trial</option>
+                    <option value="premium">Premium</option>
+                    <option value="all">Все активные</option>
+                  </select>
+                </label>
+              </div>
+              <button
+                type="button"
+                disabled={mailBusy || mailLead.trim().length < 10}
+                className="admin-btn disabled:opacity-60"
+                onClick={() => runAction('mail-broadcast', async () => {
+                  setMailBusy(true)
+                  try {
+                    const res = await sendAdminMailBroadcast({
+                      subject: mailSubject.trim(),
+                      title: mailTitle.trim(),
+                      lead: mailLead.trim(),
+                      ctaLabel: mailCtaLabel.trim() || undefined,
+                      ctaPath: mailCtaPath.trim() || undefined,
+                      audience: mailAudience,
+                    })
+                    return res.message
+                  } finally {
+                    setMailBusy(false)
+                  }
+                })}
+              >
+                {mailBusy ? 'Отправка…' : 'Отправить рассылку'}
+              </button>
+            </div>
             <div className="admin-card overflow-hidden">
               <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] flex flex-wrap items-center justify-between gap-3">
                 <p className="font-bold">Лист ожидания Premium ({waitlistCount}) · ожидают {waitlistPending}</p>
@@ -1495,6 +1577,7 @@ export default function AdminPanel() {
                   </>
                 )}
               </div>
+            </div>
             </div>
           )}
 

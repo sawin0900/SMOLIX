@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { premiumActivatedEmail, sendMail } from '../lib/mailer.js'
 import { tryFulfillReferralForUser } from '../lib/referral.js'
 import { getSessionUser } from '../lib/session.js'
 import { activatePaidSubscription } from '../lib/subscription.js'
@@ -57,16 +58,35 @@ async function markOrderPaid(orderId: string, providerPaymentId?: string | null)
     include: { coupon: true },
   })
   const bonusDays = redemption?.coupon.bonusDays ?? 0
+  const totalDays = order.plan.durationDays + bonusDays
   await activatePaidSubscription(
     order.userId,
     order.planId,
-    order.plan.durationDays + bonusDays,
+    totalDays,
   )
 
   try {
     await tryFulfillReferralForUser(order.userId)
   } catch {
     // non-fatal — payment already succeeded
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { email: true },
+    })
+    if (user?.email) {
+      const siteUrl = (process.env.WEB_APP_URL || 'https://jetsale.online').replace(/\/+$/, '')
+      const mail = premiumActivatedEmail({
+        siteUrl,
+        days: totalDays,
+        planName: order.plan.name,
+      })
+      await sendMail({ to: user.email, ...mail })
+    }
+  } catch {
+    // non-fatal — subscription already active
   }
 
   return { ok: true as const, alreadyPaid: false }

@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { getSessionUser } from '../lib/session.js'
 import { prisma } from '../lib/prisma.js'
-import { premiumLaunchEmail, sendMail } from '../lib/mailer.js'
+import { brandedNoticeEmail, premiumLaunchEmail, sendMail } from '../lib/mailer.js'
 import { getRemnawaveOverview } from '../lib/remnawave.js'
 import { ensureRemnawaveProvisioned } from '../lib/vpn-provision.js'
 import { extendActiveSubscription } from '../lib/subscription.js'
@@ -739,6 +739,86 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
     return {
       message: sent > 0 ? `Отправлено ${sent} писем` : 'Нет новых адресов для уведомления',
       sent,
+    }
+  })
+
+  app.post('/mail/broadcast', async (request, reply) => {
+    const actor = await requireAdminOnly(request, reply)
+    if (reply.sent || !actor) return
+
+    const body = z
+      .object({
+        subject: z.string().trim().min(3).max(160),
+        title: z.string().trim().min(3).max(160),
+        lead: z.string().trim().min(10).max(4000),
+        ctaLabel: z.string().trim().min(2).max(60).optional(),
+        ctaPath: z.string().trim().min(1).max(120).optional(),
+        audience: z.enum(['all', 'premium', 'trial', 'me']).default('me'),
+      })
+      .safeParse(request.body)
+
+    if (!body.success) {
+      return reply.code(400).send({ error: 'Проверьте тему, заголовок и текст письма' })
+    }
+
+    const siteUrl = (process.env.WEB_APP_URL || 'https://jetsale.online').replace(/\/+$/, '')
+    const mail = brandedNoticeEmail({
+      siteUrl,
+      subject: body.data.subject,
+      title: body.data.title,
+      lead: body.data.lead,
+      ctaLabel: body.data.ctaLabel,
+      ctaPath: body.data.ctaPath,
+    })
+
+    let recipients: Array<{ email: string }> = []
+    if (body.data.audience === 'me') {
+      recipients = [{ email: actor.email }]
+    } else if (body.data.audience === 'all') {
+      recipients = await prisma.user.findMany({
+        where: { status: 'ACTIVE' },
+        select: { email: true },
+        take: 500,
+      })
+    } else if (body.data.audience === 'premium') {
+      const rows = await prisma.subscription.findMany({
+        where: { status: 'ACTIVE', isTrial: false },
+        select: { user: { select: { email: true, status: true } } },
+        take: 500,
+      })
+      recipients = rows
+        .filter((row) => row.user.status === 'ACTIVE')
+        .map((row) => ({ email: row.user.email }))
+    } else {
+      const rows = await prisma.subscription.findMany({
+        where: { status: 'ACTIVE', isTrial: true },
+        select: { user: { select: { email: true, status: true } } },
+        take: 500,
+      })
+      recipients = rows
+        .filter((row) => row.user.status === 'ACTIVE')
+        .map((row) => ({ email: row.user.email }))
+    }
+
+    const unique = [...new Map(recipients.map((item) => [item.email.toLowerCase(), item])).values()]
+    let sent = 0
+    for (const recipient of unique) {
+      await sendMail({ to: recipient.email, ...mail })
+      sent += 1
+    }
+
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'mail.broadcast',
+      targetType: 'mail',
+      targetId: body.data.audience,
+    })
+
+    return {
+      message: `Отправлено ${sent} писем (${body.data.audience})`,
+      sent,
+      audience: body.data.audience,
     }
   })
 

@@ -272,6 +272,102 @@ export function emailVerificationEmail(verifyUrl: string): MailContent {
   return { subject, text, html }
 }
 
+export function premiumActivatedEmail(options: {
+  siteUrl: string
+  days: number
+  planName?: string | null
+}): MailContent {
+  const site = options.siteUrl.replace(/\/+$/, '')
+  const plan = options.planName?.trim() || 'Premium'
+  const subject = 'jetsale.online Premium активирован'
+  const text = [
+    'Оплата прошла успешно!',
+    '',
+    `Тариф «${plan}» активирован примерно на ${options.days} дн.`,
+    '',
+    `Кабинет: ${site}/app`,
+    `Подписка: ${site}/app/subscription`,
+    `Установка расширения: ${site}/install`,
+    '',
+    'Команда jetsale.online',
+  ].join('\n')
+
+  const html = emailShell({
+    siteUrl: site,
+    preheader: `${plan} активен — полный доступ открыт`,
+    title: subject,
+    bodyHtml: `
+      <div style="display:inline-block;background:${BRAND.tealSoft};color:${BRAND.tealDark};font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:6px 10px;border-radius:999px;margin-bottom:14px;">
+        Оплата успешна
+      </div>
+      <h1 style="margin:0 0 12px;font-size:24px;line-height:1.2;letter-spacing:-0.04em;color:${BRAND.ink};">Premium активирован</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:${BRAND.muted};">
+        Тариф <strong style="color:${BRAND.ink};">${escapeHtml(plan)}</strong> подключен примерно на
+        <strong style="color:${BRAND.ink};">${options.days} дн.</strong>
+        Полный интернет доступен в расширении и по ссылке подписки на устройствах.
+      </p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:8px 0 20px;background:${BRAND.canvas};border-radius:16px;">
+        <tr>
+          <td style="padding:16px 18px;">
+            <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:${BRAND.ink};">Быстрый старт</p>
+            <ul style="margin:0;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.7;">
+              <li>Откройте кабинет и проверьте статус Premium</li>
+              <li>В расширении Chrome выберите режим Premium</li>
+              <li>На телефоне / TV импортируйте ссылку подписки</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+      <div style="margin:8px 0 12px;">${button(`${site}/app/subscription`, 'Открыть подписку')}</div>
+      <p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:${BRAND.muted};">
+        <a href="${site}/app" style="color:${BRAND.teal};font-weight:700;text-decoration:none;">Кабинет</a>
+        &nbsp;·&nbsp;
+        <a href="${site}/install" style="color:${BRAND.teal};font-weight:700;text-decoration:none;">Установка расширения</a>
+      </p>
+    `,
+  })
+
+  return { subject, text, html }
+}
+
+export function brandedNoticeEmail(options: {
+  siteUrl: string
+  subject: string
+  title: string
+  lead: string
+  ctaLabel?: string
+  ctaPath?: string
+  preheader?: string
+}): MailContent {
+  const site = options.siteUrl.replace(/\/+$/, '')
+  const hasCta = Boolean(options.ctaLabel && options.ctaPath)
+  const href = hasCta
+    ? `${site}${options.ctaPath!.startsWith('/') ? options.ctaPath : `/${options.ctaPath}`}`
+    : site
+  const text = [
+    options.title,
+    '',
+    options.lead,
+    '',
+    hasCta ? `${options.ctaLabel}: ${href}` : `Сайт: ${site}`,
+    '',
+    'Команда jetsale.online',
+  ].join('\n')
+
+  const html = emailShell({
+    siteUrl: site,
+    preheader: options.preheader || options.lead,
+    title: options.subject,
+    bodyHtml: `
+      <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;letter-spacing:-0.03em;color:${BRAND.ink};">${escapeHtml(options.title)}</h1>
+      <p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:${BRAND.muted};white-space:pre-wrap;">${escapeHtml(options.lead)}</p>
+      ${hasCta ? `<div style="margin:22px 0 8px;">${button(href, options.ctaLabel!)}</div>` : ''}
+    `,
+  })
+
+  return { subject: options.subject, text, html }
+}
+
 export function reminderEmail(options: {
   siteUrl: string
   subject: string
