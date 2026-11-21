@@ -1,0 +1,67 @@
+jetsale.online — операционный чеклист
+=====================================
+
+A. Полный цикл (ручной тест, 10–15 мин)
+---------------------------------------
+1) Регистрация нового email на https://jetsale.online/auth?mode=register
+2) Письмо «Добро пожаловать» пришло (HTML)
+3) Вход в кабинет /app — trial ACTIVE ~14 дней
+4) Скачать ZIP /install → chrome://extensions → unpacked jetsale-chrome
+5) Войти в popup тем же email → режим YouTube / Premium
+6) В кабинете есть VPN-ссылка / QR (Remnawave shortUuid)
+7) На телефоне: импорт ссылки в клиент (FlClashX / Happ / v2rayNG)
+8) (после YooKassa) оплата Premium → письмо «Premium активирован» → статус не trial
+
+B. Бэкапы
+---------
+Скрипт: scripts/ops/backup-jetsale-api.sh
+  install -m 700 /var/www/SMOLIX/scripts/ops/backup-jetsale-api.sh /usr/local/bin/backup-jetsale-api.sh
+  /usr/local/bin/backup-jetsale-api.sh
+  crontab -e:
+    15 3 * * * /usr/local/bin/backup-jetsale-api.sh >> /var/log/jetsale-backup.log 2>&1
+
+C. Смена пароля Postgres (если ещё ChangeMe)
+--------------------------------------------
+1) Новый пароль придумать и сохранить в менеджере паролей
+2) sudo -u postgres psql -c "ALTER USER smolix WITH PASSWORD 'НОВЫЙ_ПАРОЛЬ';"
+3) В /var/www/SMOLIX/apps/api/.env обновить DATABASE_URL
+4) systemctl restart smolix-api
+5) Сразу сделать backup-jetsale-api.sh
+
+D. Cloudflare Turnstile
+-----------------------
+1) https://dash.cloudflare.com → Turnstile → Add site → jetsale.online
+2) Скопировать Site Key + Secret Key
+3) В apps/api/.env:
+     TURNSTILE_SITE_KEY=...
+     TURNSTILE_SECRET_KEY=...
+4) В apps/web/.env (или при сборке):
+     VITE_TURNSTILE_SITE_KEY=тот_же_site_key
+   (API /auth/antibot уже отдаёт site key; VITE нужен если фронт читает из import.meta)
+5) npm run build (api+web) && systemctl restart smolix-api
+6) На /auth?mode=register должен появиться виджет «я не робот»
+
+E. Chrome Web Store
+-------------------
+1) Developer dashboard → новый item → загрузить ZIP из public/downloads/jetsale-chrome.zip
+   (лучше собрать store-пакет без "key" в manifest — Store выдаст свой ID)
+2) После публикации:
+     VITE_CHROME_STORE_URL=https://chromewebstore.google.com/detail/...
+3) Пересобрать web; обновить ALLOWED_EXTENSION_IDS на ID из магазина
+
+F. Оферта / политика
+--------------------
+Админка → «Оферта / Политика» → заменить плейсхолдеры:
+  [НАИМЕНОВАНИЕ / ФИО], [ИНН], [ОГРН/ОГРНИП], [ЮРИДИЧЕСКИЙ АДРЕС], [EMAIL], [ТЕЛЕФОН], [EMAIL ПОДДЕРЖКИ]
+EMAIL поддержки: info@jetsale.online
+
+G. Мониторинг
+-------------
+  journalctl -u smolix-api -n 50 --no-pager
+  Админка → Alerts / Remnawave — ноды и open alerts
+  curl -s https://jetsale.online/api/health
+
+H. Поддержка
+------------
+  Отвечать с info@jetsale.online
+  В оферте явно прописать возвраты / срок trial / что входит в Premium
