@@ -274,7 +274,12 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       try {
         const webAppUrl = (process.env.WEB_APP_URL || 'https://jetsale.online').replace(/\/+$/, '')
         const welcome = welcomeEmail(webAppUrl)
-        await sendMail({ to: email, subject: welcome.subject, text: welcome.text })
+        await sendMail({
+          to: email,
+          subject: welcome.subject,
+          text: welcome.text,
+          html: welcome.html,
+        })
       } catch (mailError) {
         request.log.error(mailError, 'welcome email failed')
       }
@@ -669,7 +674,12 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     const webAppUrl = (process.env.WEB_APP_URL || 'http://127.0.0.1:5173').replace(/\/+$/, '')
     const verifyUrl = `${webAppUrl}/auth?mode=verify-email&token=${token}`
     const mail = emailVerificationEmail(verifyUrl)
-    await sendMail({ to: user.email, subject: mail.subject, text: mail.text })
+    await sendMail({
+      to: user.email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    })
 
     return { message: 'Письмо с подтверждением отправлено' }
   })

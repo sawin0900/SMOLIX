@@ -1,5 +1,5 @@
 import { prisma } from './prisma.js'
-import { sendMail } from './mailer.js'
+import { reminderEmail, sendMail } from './mailer.js'
 
 function webUrl() {
   return (process.env.WEB_APP_URL || 'http://127.0.0.1:5173').replace(/\/+$/, '')
@@ -52,22 +52,21 @@ export async function runSubscriptionReminders() {
     if (await alreadySent(sub.user.id, kind, 2)) continue
 
     const site = webUrl()
-    const subject = sub.isTrial
-      ? 'jetsale.online: пробный Premium скоро закончится'
-      : 'jetsale.online: Premium скоро закончится'
-    const text = [
-      `Здравствуйте!`,
-      '',
-      sub.isTrial
-        ? `Ваш пробный Premium заканчивается примерно через ${days} дн.`
-        : `Ваш Premium заканчивается примерно через ${days} дн.`,
-      '',
-      `Продлить: ${site}/app/subscription`,
-      '',
-      'Команда jetsale.online',
-    ].join('\n')
+    const mail = reminderEmail({
+      siteUrl: site,
+      subject: sub.isTrial
+        ? 'jetsale.online: пробный Premium скоро закончится'
+        : 'jetsale.online: Premium скоро закончится',
+      title: sub.isTrial ? 'Пробный период заканчивается' : 'Premium скоро закончится',
+      lead: sub.isTrial
+        ? `Ваш пробный Premium заканчивается примерно через ${days} дн. Продлите доступ, чтобы сохранить полный интернет.`
+        : `Ваш Premium заканчивается примерно через ${days} дн. Продлите подписку в кабинете.`,
+      ctaLabel: 'Продлить подписку',
+      ctaPath: '/app/subscription',
+      preheader: `Осталось около ${days} дн.`,
+    })
 
-    await sendMail({ to: sub.user.email, subject, text })
+    await sendMail({ to: sub.user.email, ...mail })
     await markSent(sub.user.id, kind)
     sent += 1
   }
@@ -94,18 +93,16 @@ export async function runSubscriptionReminders() {
     const kind = 'trial_no_extension'
     if (await alreadySent(sub.user.id, kind, 5)) continue
     const site = webUrl()
-    await sendMail({
-      to: sub.user.email,
+    const mail = reminderEmail({
+      siteUrl: site,
       subject: 'jetsale.online: установите расширение, пока действует trial',
-      text: [
-        'У вас активен пробный Premium, но расширение ещё не входило в аккаунт.',
-        '',
-        `Инструкция: ${site}/install`,
-        `Кабинет: ${site}/app`,
-        '',
-        'Команда jetsale.online',
-      ].join('\n'),
+      title: 'Установите расширение',
+      lead: 'У вас активен пробный Premium, но расширение ещё не входило в аккаунт. Подключите Chrome за пару минут.',
+      ctaLabel: 'Открыть установку',
+      ctaPath: '/install',
+      preheader: 'Trial активен — поставьте расширение',
     })
+    await sendMail({ to: sub.user.email, ...mail })
     await markSent(sub.user.id, kind)
     sent += 1
   }
