@@ -20,7 +20,8 @@ import {
 } from './lib/security.js'
 import { startBlockMonitorScheduler } from './lib/block-monitor.js'
 
-dotenv.config()
+// override: true — иначе пустые REMWAVE_* из окружения блокируют значения из .env
+dotenv.config({ override: true })
 
 const app = Fastify({
   logger: true,

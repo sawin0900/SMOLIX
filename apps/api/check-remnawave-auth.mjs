@@ -1,4 +1,18 @@
-import 'dotenv/config'
+import fs from 'node:fs'
+import path from 'node:path'
+import dotenv from 'dotenv'
+
+const envPath = path.resolve(process.cwd(), '.env')
+const parsed = fs.existsSync(envPath)
+  ? dotenv.parse(fs.readFileSync(envPath))
+  : {}
+
+// Force values from .env file (ignore empty shell/systemd leftovers)
+for (const [key, value] of Object.entries(parsed)) {
+  if (key.startsWith('REMWAVE_')) {
+    process.env[key] = value
+  }
+}
 
 const baseUrl = (process.env.REMWAVE_BASE_URL || '').trim().replace(/\/+$/, '')
 const apiToken = (process.env.REMWAVE_API_TOKEN || '').trim()
@@ -8,6 +22,7 @@ const squad =
   'b73684c7-ce2e-4c3f-9065-fb940578214b'
 
 console.log({
+  envPath,
   REMWAVE_BASE_URL: baseUrl || '(пусто)',
   REMWAVE_API_TOKEN: apiToken ? `задан (${apiToken.length} символов)` : '(пусто)',
   REMWAVE_TINYAUTH_X_API_KEY: apiKey ? `задан (${apiKey.length} символов)` : '(пусто)',
