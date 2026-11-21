@@ -24,6 +24,7 @@ import {
 import { ensureSupportCode } from '../lib/audit.js'
 import { consumeImpersonationToken } from '../lib/impersonation.js'
 import { getSessionUser } from '../lib/session.js'
+import { ensureTrialPlan } from '../lib/trial-plan.js'
 import {
   authDelay,
   clearLoginFailures,
@@ -199,6 +200,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const referralCode = await ensureUniqueReferralCode()
+      const trialPlan = await ensureTrialPlan()
 
       const user = await prisma.$transaction(async (tx) => {
         const createdUser = await tx.user.create({
@@ -216,19 +218,6 @@ const authRoutes: FastifyPluginAsync = async (app) => {
             userId: createdUser.id,
           },
         })
-
-        const trialPlan = await tx.plan.findFirst({
-          where: {
-            name: 'Пробный период',
-            isActive: true,
-            price: 0,
-            durationDays: 14,
-          },
-        })
-
-        if (!trialPlan) {
-          throw new Error('Не найден активный тариф пробного периода')
-        }
 
         const trialStartsAt = new Date()
         const trialExpiresAt = new Date(
