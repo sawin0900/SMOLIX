@@ -1,8 +1,4 @@
-const apiUrls = [
-    "https://jetsale.online/api",
-    "http://127.0.0.1:3001",
-    "http://localhost:3001",
-  ];
+const apiUrls = ["https://jetsale.online/api"];
 
 const API_URL = apiUrls[0];
 
@@ -461,8 +457,10 @@ loginForm.addEventListener("submit", async event => {
     showMessage(
       loginMessage,
       /Failed to fetch|NetworkError|fetch/i.test(message)
-        ? "Не удалось подключиться к API. Проверьте запуск сервера на порту 3001."
-        : message
+        ? "Нет сети. Проверьте интернет и попробуйте снова."
+        : /пробн|подписк|trial|SUBSCRIPTION/i.test(message)
+          ? "Trial кончился. YouTube бесплатно; Premium — в кабинете."
+          : message
     );
   } finally {
     loginButton.disabled = false;

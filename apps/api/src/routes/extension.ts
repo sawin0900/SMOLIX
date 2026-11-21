@@ -5,9 +5,9 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getActiveSubscription } from '../lib/subscription.js'
 import {
-  getAccessibleNodes,
-  SUPPORTED_PROXY_NODE_UUID,
-} from '../lib/remnawave.js'
+  listEnabledExtensionServers,
+  syncExtensionNodesFromRemnawave,
+} from '../lib/extension-nodes.js'
 import { tryFulfillReferralForUser } from '../lib/referral.js'
 import {
   authDelay,
@@ -268,27 +268,14 @@ const extensionRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-const nodes = await getAccessibleNodes()
+    try {
+      await syncExtensionNodesFromRemnawave()
+    } catch {
+      /* use DB cache if Remnawave briefly unavailable */
+    }
 
-const countryNames: Record<string, string> = {
-  US: 'США',
-  CA: 'Канада',
-  RU: 'Россия',
-}
-
-const servers = nodes
-  .filter((node) => node.uuid === SUPPORTED_PROXY_NODE_UUID)
-  .map((node) => ({
-    id: node.uuid,
-    name: node.nodeName,
-    country: countryNames[node.countryCode] ?? node.countryCode,
-    city: null,
-    nodeUuid: node.uuid,
-    configProfileUuid: node.configProfileUuid,
-    activeInbounds: node.activeInbounds,
-  }))
-
-return { servers }
+    const servers = await listEnabledExtensionServers()
+    return { servers }
   })
   app.post('/logout', async (request, reply) => {
     const token = getBearerToken(request.headers.authorization)

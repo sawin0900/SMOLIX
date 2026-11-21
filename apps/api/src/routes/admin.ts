@@ -1,14 +1,27 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { getSessionUser } from '../lib/session.js'
 import { prisma } from '../lib/prisma.js'
-import { brandedNoticeEmail, premiumLaunchEmail, sendMail } from '../lib/mailer.js'
+import { brandedNoticeEmail, getMailStats, premiumLaunchEmail, sendMail } from '../lib/mailer.js'
 import { getRemnawaveOverview } from '../lib/remnawave.js'
+import {
+  listExtensionNodes,
+  syncExtensionNodesFromRemnawave,
+} from '../lib/extension-nodes.js'
 import { ensureRemnawaveProvisioned } from '../lib/vpn-provision.js'
 import { extendActiveSubscription } from '../lib/subscription.js'
 import { runBlockMonitor } from '../lib/block-monitor.js'
 import { ensureSupportCode, writeAdminAudit } from '../lib/audit.js'
 import { isDestructiveAllowed, requireAdminOnly, requireStaff } from '../lib/admin-auth.js'
 import { createImpersonationToken } from '../lib/impersonation.js'
+import {
+  getBackupStatus,
+  getOpsHealth,
+  startBackupRun,
+} from '../lib/ops-health.js'
+import {
+  getPublicStatusOverride,
+  setPublicStatusOverride,
+} from '../lib/system-settings.js'
 import { z } from 'zod'
 
 async function requireAdmin(request: any, reply: any) {
@@ -826,7 +839,29 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
     await requireAdmin(request, reply)
     if (reply.sent) return
 
-    return getRemnawaveOverview()
+    const overview = await getRemnawaveOverview()
+    try {
+      await syncExtensionNodesFromRemnawave()
+    } catch {
+      /* overview still useful without sync */
+    }
+    const extensionNodes = await listExtensionNodes()
+    const byUuid = new Map(extensionNodes.map((n) => [n.remnawaveNodeUuid, n]))
+
+    return {
+      ...overview,
+      nodes: overview.nodes.map((node) => {
+        const ext = byUuid.get(node.uuid)
+        return {
+          ...node,
+          extensionEnabled: Boolean(ext?.isEnabled),
+          extensionHostname: ext?.hostname ?? null,
+          extensionPort: ext?.port ?? 8443,
+          extensionNodeId: ext?.id ?? null,
+        }
+      }),
+      extensionNodes,
+    }
   })
 
   app.post('/remnawave/sync-user', async (request, reply) => {
@@ -855,6 +890,117 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
     }
   })
 
+  app.post('/extension-nodes/sync', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+
+    try {
+      const result = await syncExtensionNodesFromRemnawave()
+      const extensionNodes = await listExtensionNodes()
+      return {
+        message: `Синхронизировано: +${result.created}, обновлено ${result.updated}, всего ${result.total}`,
+        ...result,
+        extensionNodes,
+      }
+    } catch (error) {
+      request.log.error(error)
+      return reply.code(502).send({
+        error: error instanceof Error ? error.message : 'Не удалось синхронизировать ноды',
+      })
+    }
+  })
+
+  app.get('/extension-nodes', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+
+    try {
+      await syncExtensionNodesFromRemnawave()
+    } catch {
+      /* keep DB */
+    }
+
+    return { extensionNodes: await listExtensionNodes() }
+  })
+
+  app.patch('/extension-nodes/:nodeUuid', async (request, reply) => {
+    const actor = await requireAdmin(request, reply)
+    if (reply.sent || !actor) return
+
+    const params = z.object({ nodeUuid: z.string().uuid() }).safeParse(request.params)
+    const body = z.object({
+      isEnabled: z.boolean().optional(),
+      hostname: z.string().trim().min(1).max(253).nullable().optional(),
+      port: z.number().int().min(1).max(65535).optional(),
+      name: z.string().trim().min(1).max(120).optional(),
+    }).safeParse(request.body)
+
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ error: 'Укажите nodeUuid и поля для обновления' })
+    }
+
+    const existing = await prisma.extensionNode.findUnique({
+      where: { remnawaveNodeUuid: params.data.nodeUuid },
+    })
+
+    if (!existing) {
+      try {
+        await syncExtensionNodesFromRemnawave()
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const row = await prisma.extensionNode.findUnique({
+      where: { remnawaveNodeUuid: params.data.nodeUuid },
+    })
+
+    if (!row) {
+      return reply.code(404).send({ error: 'Нода не найдена. Сначала Sync нод из Remnawave.' })
+    }
+
+    const nextEnabled = body.data.isEnabled ?? row.isEnabled
+    const nextHostname =
+      body.data.hostname === undefined
+        ? row.hostname
+        : body.data.hostname
+
+    if (nextEnabled && !nextHostname?.trim()) {
+      return reply.code(400).send({
+        error: 'Чтобы включить локацию в расширении, укажите hostname HTTPS-прокси (например rassiya.jetsale.online)',
+      })
+    }
+
+    const node = await prisma.extensionNode.update({
+      where: { id: row.id },
+      data: {
+        ...(body.data.isEnabled !== undefined ? { isEnabled: body.data.isEnabled } : {}),
+        ...(body.data.hostname !== undefined ? { hostname: body.data.hostname } : {}),
+        ...(body.data.port !== undefined ? { port: body.data.port } : {}),
+        ...(body.data.name !== undefined ? { name: body.data.name } : {}),
+      },
+    })
+
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'extension_node.update',
+      targetType: 'extension_node',
+      targetId: node.id,
+      meta: {
+        remnawaveNodeUuid: node.remnawaveNodeUuid,
+        isEnabled: node.isEnabled,
+        hostname: node.hostname,
+        port: node.port,
+      },
+    })
+
+    return {
+      message: `${node.name}: ${node.isEnabled ? 'в расширении ON' : 'в расширении OFF'}`,
+      node,
+    }
+  })
+
   app.post('/sessions/:sessionId/revoke', async (request, reply) => {
     await requireAdmin(request, reply)
     if (reply.sent) return
@@ -878,6 +1024,40 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return { message: 'Сессия отозвана', revoked: 1 }
+  })
+
+  app.post('/users/:userId/sessions/revoke-all', async (request, reply) => {
+    const actor = await requireAdmin(request, reply)
+    if (reply.sent || !actor) return
+
+    const params = z.object({ userId: z.string().uuid() }).safeParse(request.params)
+    if (!params.success) {
+      return reply.code(400).send({ error: 'Укажите userId' })
+    }
+
+    const result = await prisma.extensionSession.updateMany({
+      where: {
+        userId: params.data.userId,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    })
+
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'sessions.revoke_all',
+      targetType: 'user',
+      targetId: params.data.userId,
+      meta: { revoked: result.count },
+    })
+
+    return {
+      message: result.count
+        ? `Отключено сессий: ${result.count}`
+        : 'Активных сессий не было',
+      revoked: result.count,
+    }
   })
 
   app.get('/alerts', async (request, reply) => {
@@ -1177,8 +1357,138 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
         referralEnabled: process.env.REFERRAL_ENABLED !== '0',
         billingProvider: process.env.YOOKASSA_SHOP_ID ? 'yookassa' : 'mock',
         turnstile: Boolean(process.env.TURNSTILE_SECRET_KEY),
+        proxyManager: Boolean(process.env.PROXY_MANAGER_URL?.trim() && process.env.PROXY_MANAGER_TOKEN?.trim()),
+        proxyCredentialsKey: Boolean(process.env.PROXY_CREDENTIALS_KEY?.trim()),
+        smtp: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
       },
     }
+  })
+
+  app.get('/ops-health', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+    const [health, statusOverride] = await Promise.all([
+      getOpsHealth(),
+      getPublicStatusOverride(),
+    ])
+    return { ...health, statusOverride }
+  })
+
+  app.get('/public-status', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+    return { override: await getPublicStatusOverride() }
+  })
+
+  app.patch('/public-status', async (request, reply) => {
+    const actor = await requireAdminOnly(request, reply)
+    if (reply.sent || !actor) return
+
+    const body = z.object({
+      mode: z.enum(['auto', 'operational', 'degraded', 'major_outage']),
+      message: z.string().trim().max(500).nullable().optional(),
+    }).safeParse(request.body)
+
+    if (!body.success) {
+      return reply.code(400).send({ error: 'Укажите mode: auto | operational | degraded | major_outage' })
+    }
+
+    const override = await setPublicStatusOverride(
+      {
+        mode: body.data.mode,
+        message: body.data.message ?? null,
+      },
+      actor.id,
+    )
+
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'public_status.update',
+      targetType: 'system',
+      targetId: 'public_status',
+      meta: body.data,
+    })
+
+    return {
+      message: body.data.mode === 'auto'
+        ? 'Статус сайта: авто'
+        : `Баннер статуса: ${body.data.mode}`,
+      override: await getPublicStatusOverride(),
+      updatedAt: override.updatedAt,
+    }
+  })
+
+  app.get('/mail/stats', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+    return { mail: getMailStats() }
+  })
+
+  app.post('/mail/test', async (request, reply) => {
+    const actor = await requireAdmin(request, reply)
+    if (reply.sent || !actor) return
+
+    const siteUrl = (process.env.WEB_APP_URL || 'https://jetsale.online').replace(/\/+$/, '')
+    const mail = brandedNoticeEmail({
+      subject: 'jetsale.online — тест SMTP',
+      title: 'Тестовое письмо',
+      lead: 'Если вы видите это письмо — SMTP настроен и доставка работает.',
+      ctaLabel: 'Открыть кабинет',
+      ctaPath: '/app',
+      siteUrl,
+    })
+
+    try {
+      const result = await sendMail({ to: actor.email, ...mail })
+      await writeAdminAudit({
+        actorId: actor.id,
+        actorEmail: actor.email,
+        action: 'mail.test',
+        targetType: 'mail',
+        targetId: actor.email,
+        meta: { mode: result.mode, delivered: result.delivered },
+      })
+      return {
+        message: result.delivered
+          ? `Тест отправлен на ${actor.email}`
+          : `SMTP не настроен — письмо только в лог API (to ${actor.email})`,
+        result,
+        mail: getMailStats(),
+      }
+    } catch (err) {
+      return reply.code(502).send({
+        error: err instanceof Error ? err.message : 'Ошибка SMTP',
+        mail: getMailStats(),
+      })
+    }
+  })
+
+  app.get('/backup', async (request, reply) => {
+    await requireAdmin(request, reply)
+    if (reply.sent) return
+    return { backup: await getBackupStatus() }
+  })
+
+  app.post('/backup/run', async (request, reply) => {
+    const actor = await requireAdminOnly(request, reply)
+    if (reply.sent || !actor) return
+
+    const result = await startBackupRun()
+    await writeAdminAudit({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'backup.run',
+      targetType: 'system',
+      targetId: 'backup',
+      meta: result,
+    })
+
+    if (!result.started) {
+      return reply.code(400).send({ error: result.message, backup: await getBackupStatus() })
+    }
+
+    return { message: result.message, backup: await getBackupStatus() }
   })
 
   app.get('/sessions', async (request, reply) => {
@@ -1412,27 +1722,48 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
     if (reply.sent || !actor) return
 
     const params = z.object({ couponId: z.string().uuid() }).safeParse(request.params)
-    const body = z.object({ isActive: z.boolean() }).safeParse(request.body)
+    const body = z.object({
+      isActive: z.boolean().optional(),
+      percentOff: z.number().int().min(1).max(100).nullable().optional(),
+      amountOff: z.number().min(0).nullable().optional(),
+      bonusDays: z.number().int().min(0).max(365).optional(),
+      maxRedemptions: z.number().int().min(1).nullable().optional(),
+      endsAt: z.string().datetime().nullable().optional(),
+    }).safeParse(request.body)
+
     if (!params.success || !body.success) {
-      return reply.code(400).send({ error: 'Укажите couponId и isActive' })
+      return reply.code(400).send({ error: 'Укажите couponId и поля для обновления' })
+    }
+
+    if (Object.keys(body.data).length === 0) {
+      return reply.code(400).send({ error: 'Нет полей для обновления' })
     }
 
     const coupon = await prisma.coupon.update({
       where: { id: params.data.couponId },
-      data: { isActive: body.data.isActive },
+      data: {
+        ...(body.data.isActive !== undefined ? { isActive: body.data.isActive } : {}),
+        ...(body.data.percentOff !== undefined ? { percentOff: body.data.percentOff } : {}),
+        ...(body.data.amountOff !== undefined ? { amountOff: body.data.amountOff } : {}),
+        ...(body.data.bonusDays !== undefined ? { bonusDays: body.data.bonusDays } : {}),
+        ...(body.data.maxRedemptions !== undefined ? { maxRedemptions: body.data.maxRedemptions } : {}),
+        ...(body.data.endsAt !== undefined
+          ? { endsAt: body.data.endsAt ? new Date(body.data.endsAt) : null }
+          : {}),
+      },
     })
 
     await writeAdminAudit({
       actorId: actor.id,
       actorEmail: actor.email,
-      action: 'coupon.toggle',
+      action: 'coupon.update',
       targetType: 'coupon',
       targetId: coupon.id,
-      meta: { isActive: body.data.isActive },
+      meta: body.data,
     })
 
     return {
-      message: body.data.isActive ? 'Купон включён' : 'Купон выключен',
+      message: 'Купон обновлён',
       coupon: { ...coupon, amountOff: coupon.amountOff?.toString() ?? null },
     }
   })

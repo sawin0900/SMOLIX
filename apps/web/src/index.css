@@ -86,6 +86,39 @@ button {
     #eef3f5;
 }
 
+.cabinet-shell[data-theme='dark'] {
+  --ink: #e8f2f4;
+  --muted: #9bb4bc;
+  --border: rgba(148, 163, 184, 0.22);
+  --canvas: #0b161a;
+  --canvas-2: #102028;
+  --canvas-band: #13262e;
+  color: var(--ink);
+}
+
+.cabinet-shell[data-theme='dark'].app-bg {
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(13, 148, 136, 0.18), transparent 42%),
+    linear-gradient(180deg, #0b161a, #102028);
+}
+
+.cabinet-shell[data-theme='dark'] .cabinet-header,
+.cabinet-shell[data-theme='dark'] .glass-card,
+.cabinet-shell[data-theme='dark'] .cabinet-aside {
+  background: rgba(16, 32, 40, 0.94);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.cabinet-shell[data-theme='dark'] .bg-white,
+.cabinet-shell[data-theme='dark'] .bg-white\/85,
+.cabinet-shell[data-theme='dark'] .bg-teal-50,
+.cabinet-shell[data-theme='dark'] .bg-amber-50,
+.cabinet-shell[data-theme='dark'] .bg-emerald-50\/70,
+.cabinet-shell[data-theme='dark'] .bg-rose-50 {
+  background-color: rgba(19, 38, 46, 0.95) !important;
+}
+
 .glass-card {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(215, 224, 229, 0.95);
@@ -1192,6 +1225,22 @@ button {
     padding: 12px;
   }
 
+  .btn-primary,
+  .btn-secondary,
+  .btn-secondary-hero {
+    min-height: 48px;
+  }
+
+  .promo-row .btn-primary {
+    width: 100%;
+  }
+
+  /* Keep QR readable and tappable on phones */
+  .glass-card img[alt*='QR'] {
+    width: min(220px, 70vw);
+    height: auto;
+  }
+
   /* Mobile hero: demo story only — hide floating popup mockup */
   .hero-stage-live .hero-mockup {
     display: none;
@@ -1591,6 +1640,84 @@ button {
 
 .hero-mockup {
   transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+}
+
+.status-outage-banner {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  border-bottom: 1px solid transparent;
+}
+
+.status-outage-banner.is-degraded {
+  background: #fffbeb;
+  border-bottom-color: #fde68a;
+  color: #92400e;
+}
+
+.status-outage-banner.is-down {
+  background: #fff1f2;
+  border-bottom-color: #fecdd3;
+  color: #9f1239;
+}
+
+.status-outage-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-outage-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid currentColor;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.promo-panel {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 28px 24px;
+  background: linear-gradient(180deg, #f7fbfb 0%, #fff 100%);
+}
+
+.promo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 480px;
+}
+
+.promo-input {
+  flex: 1 1 180px;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  outline: none;
+  background: #fff;
+}
+
+.promo-input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
 }
 
 .status-pill {

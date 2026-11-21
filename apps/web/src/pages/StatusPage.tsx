@@ -78,6 +78,9 @@ export default function StatusPage() {
           <>
             <div className={`rounded-3xl border px-5 py-6 ${tone(data.status)}`}>
               <p className="text-xs font-bold uppercase tracking-wide opacity-80">Текущее состояние</p>
+              {data.message && (
+                <p className="mt-2 text-sm opacity-90">{data.message}</p>
+              )}
               <p className="text-2xl font-extrabold mt-2">{statusLabel(data.status)}</p>
               <p className="text-sm mt-2 opacity-80">
                 Проверено {new Date(data.checkedAt).toLocaleString('ru-RU')} · {data.latencyMs} мс

@@ -63,4 +63,9 @@ export const SEO_PAGES = {
     description: 'Текущее состояние API, базы данных, VPN-панели и серверов jetsale.online.',
     path: '/status',
   },
+  help: {
+    title: 'Помощь — jetsale.online',
+    description: 'FAQ, частые ошибки расширения и поддержка info@jetsale.online.',
+    path: '/help',
+  },
 } as const satisfies Record<string, SeoConfig>

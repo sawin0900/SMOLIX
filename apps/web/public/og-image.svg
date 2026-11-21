@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F766E"/>
+      <stop offset="0.55" stop-color="#0D9488"/>
+      <stop offset="1" stop-color="#134E4A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="980" cy="120" r="180" fill="#FFFFFF" fill-opacity="0.06"/>
+  <circle cx="1080" cy="520" r="220" fill="#99F6E4" fill-opacity="0.08"/>
+  <g transform="translate(96 190)">
+    <rect width="96" height="96" rx="24" fill="#FFFFFF" fill-opacity="0.14"/>
+    <path d="M48 22L70 33V49C70 67 56.5 81 48 85C39.5 81 26 67 26 49V33L48 22Z" stroke="white" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M37 51.5L45 59.5L61 42" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="96" y="360" fill="white" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="800">jetsale.online</text>
+  <text x="96" y="420" fill="#CCFBF1" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600">YouTube бесплатно · Premium везде</text>
+  <text x="96" y="480" fill="#99F6E4" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">Расширение Chrome · телефон · ПК · TV</text>
+</svg>

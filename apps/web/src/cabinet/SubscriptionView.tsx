@@ -52,6 +52,17 @@ export function SubscriptionView({
   const [orders, setOrders] = useState<AccountOrder[]>([])
   const [couponCode, setCouponCode] = useState('')
 
+  useEffect(() => {
+    try {
+      const fromQuery = params.get('promo') || params.get('coupon')
+      const stored = localStorage.getItem('jetsale_promo') || ''
+      const next = (fromQuery || stored).trim().toUpperCase()
+      if (next) setCouponCode(next)
+    } catch {
+      /* ignore */
+    }
+  }, [params])
+
   const loadOrders = async () => {
     try {
       const res = await getAccountOrders()
@@ -346,31 +357,57 @@ export function SubscriptionView({
       </div>
 
       <div className="glass-card rounded-2xl overflow-hidden max-w-4xl mt-6">
-        <div className="px-5 py-4 border-b border-[var(--border)] font-bold">История оплат</div>
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <p className="font-bold">{t.ordersTitle}</p>
+          <p className="text-xs text-[var(--muted)] mt-1">{t.receiptHint}</p>
+        </div>
         {orders.length === 0 ? (
           <div className="px-5 py-8 text-sm text-[var(--muted)]">Пока нет оплат</div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            {orders.map((order) => (
-              <div key={order.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-sm">{order.plan.name}</p>
-                  <p className="text-xs text-[var(--muted)] mt-1">
-                    {formatDate(order.createdAt)} · заказ <span className="font-mono">{order.id.slice(0, 8)}</span>
-                    {order.payment?.provider ? ` · ${order.payment.provider}` : ''}
-                    {order.payment?.status ? ` · pay ${order.payment.status}` : ''}
-                  </p>
+            {orders.map((order) => {
+              const receiptBody = [
+                'jetsale.online — чек / квитанция',
+                `Заказ: ${order.id}`,
+                `План: ${order.plan.name}`,
+                `Сумма: ${order.amount} ${order.currency}`,
+                `Статус: ${order.status}`,
+                `Дата: ${formatDate(order.createdAt)}`,
+                order.payment?.provider ? `Провайдер: ${order.payment.provider}` : '',
+                '',
+                'Письмо об активации Premium отправляется на email аккаунта после успешной оплаты.',
+              ].filter(Boolean).join('\n')
+              const receiptMailto = `mailto:${encodeURIComponent(userEmail)}?subject=${encodeURIComponent(`jetsale.online чек ${order.id.slice(0, 8)}`)}&body=${encodeURIComponent(receiptBody)}`
+
+              return (
+                <div key={order.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-sm">{order.plan.name}</p>
+                    <p className="text-xs text-[var(--muted)] mt-1">
+                      {formatDate(order.createdAt)} · заказ <span className="font-mono">{order.id.slice(0, 8)}</span>
+                      {order.payment?.provider ? ` · ${order.payment.provider}` : ''}
+                      {order.payment?.status ? ` · pay ${order.payment.status}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold">{order.amount} {order.currency === 'RUB' ? '₽' : order.currency}</span>
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                      order.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--canvas-2)] text-[var(--muted)]'
+                    }`}>
+                      {order.status}
+                    </span>
+                    {order.status === 'PAID' && (
+                      <a
+                        href={receiptMailto}
+                        className="text-[11px] font-bold px-2.5 py-1 rounded-full border border-[var(--border)] bg-white hover:bg-[var(--canvas-band)]"
+                      >
+                        {t.receiptCta}
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{order.amount} {order.currency === 'RUB' ? '₽' : order.currency}</span>
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                    order.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--canvas-2)] text-[var(--muted)]'
-                  }`}>
-                    {order.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

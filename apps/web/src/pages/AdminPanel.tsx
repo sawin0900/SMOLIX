@@ -22,6 +22,9 @@ import {
   getAdminAudit,
   getAdminPlans,
   getAdminCoupons,
+  updateAdminPlan,
+  createAdminCoupon,
+  updateAdminCoupon,
   runAdminProbe,
   ackAdminAlert,
   resolveAdminAlert,
@@ -29,12 +32,19 @@ import {
   sendAdminMailBroadcast,
   getAdminRemnawave,
   syncAdminRemnawaveUser,
+  syncAdminExtensionNodes,
+  updateAdminExtensionNode,
   updateAdminUserStatus,
   updateAdminUserNote,
   extendAdminUser,
   cancelAdminUserSubscription,
   updateAdminServer,
   revokeAdminSession,
+  revokeAdminUserSessions,
+  getAdminOpsHealth,
+  updateAdminPublicStatus,
+  sendAdminMailTest,
+  runAdminBackup,
   markAdminOrderPaid,
   refundAdminOrder,
   impersonateAdminUser,
@@ -52,6 +62,7 @@ import {
   type AdminRemnawave,
   type AdminOrder,
   type AdminAlert,
+  type AdminOpsHealth,
   type ProbeTarget,
 } from '../api'
 import SeoHead from '../components/SeoHead'
@@ -153,6 +164,32 @@ export default function AdminPanel() {
   const [referrals, setReferrals] = useState<ReferralsData | null>(null)
   const [planRows, setPlanRows] = useState<AdminPlanRow[]>([])
   const [couponRows, setCouponRows] = useState<AdminCouponRow[]>([])
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [planDraft, setPlanDraft] = useState({
+    name: '',
+    description: '',
+    price: '',
+    durationDays: '',
+    deviceLimit: '',
+  })
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    percentOff: '',
+    amountOff: '',
+    bonusDays: '7',
+    maxRedemptions: '',
+    endsAt: '',
+  })
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null)
+  const [couponDraft, setCouponDraft] = useState({
+    percentOff: '',
+    amountOff: '',
+    bonusDays: '',
+    maxRedemptions: '',
+    endsAt: '',
+  })
+  const [opsHealth, setOpsHealth] = useState<AdminOpsHealth | null>(null)
+  const [statusMessage, setStatusMessage] = useState('')
   const [sitePages, setSitePages] = useState<SitePage[]>([])
   const [pageSlug, setPageSlug] = useState<'oferta' | 'policy'>('oferta')
   const [pageTitle, setPageTitle] = useState('')
@@ -197,9 +234,15 @@ export default function AdminPanel() {
     try {
       switch (target) {
         case 'overview': {
-          const [serversRes, remnawaveRes] = await Promise.all([getAdminServers(), getAdminRemnawave()])
+          const [serversRes, remnawaveRes, opsRes] = await Promise.all([
+            getAdminServers(),
+            getAdminRemnawave(),
+            getAdminOpsHealth(),
+          ])
           setServers(serversRes.servers)
           setRemnawave(remnawaveRes)
+          setOpsHealth(opsRes)
+          setStatusMessage(opsRes.statusOverride?.message || '')
           break
         }
         case 'alerts': {
@@ -599,6 +642,32 @@ export default function AdminPanel() {
               openAlerts={openAlerts}
               waitlistPending={waitlistPending}
               servers={servers}
+              opsHealth={opsHealth}
+              statusMessage={statusMessage}
+              onStatusMessageChange={setStatusMessage}
+              actionBusy={actionBusy}
+              onSaveStatus={(mode) => runAction(`status-${mode}`, async () => {
+                const res = await updateAdminPublicStatus({
+                  mode,
+                  message: statusMessage.trim() || null,
+                })
+                const ops = await getAdminOpsHealth()
+                setOpsHealth(ops)
+                setStatusMessage(ops.statusOverride?.message || '')
+                return res.message
+              })}
+              onMailTest={() => runAction('mail-test', async () => {
+                const res = await sendAdminMailTest()
+                const ops = await getAdminOpsHealth()
+                setOpsHealth(ops)
+                return res.message
+              })}
+              onBackupRun={() => runAction('backup-run', async () => {
+                const res = await runAdminBackup()
+                const ops = await getAdminOpsHealth()
+                setOpsHealth(ops)
+                return res.message
+              })}
             />
           )}
 
@@ -1281,7 +1350,22 @@ export default function AdminPanel() {
                       ))}
                     </div>
                     <div>
-                      <p className="font-bold mb-2">Сессии расширения ({userDetail.extensionSessions.length})</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <p className="font-bold">Сессии расширения ({userDetail.extensionSessions.length})</p>
+                        <button
+                          type="button"
+                          disabled={actionBusy === `detail-sess-all-${userDetail.id}` || userDetail.extensionSessions.length === 0}
+                          onClick={() => runAction(`detail-sess-all-${userDetail.id}`, async () => {
+                            const res = await revokeAdminUserSessions(userDetail.id)
+                            const detail = await getAdminUser(userDetail.id)
+                            setUserDetail(detail.user)
+                            return res.message
+                          })}
+                          className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-200 hover:bg-rose-500/10 disabled:opacity-60"
+                        >
+                          Выбить все
+                        </button>
+                      </div>
                       {userDetail.extensionSessions.length === 0 ? <p className="admin-muted text-xs">Нет активных</p> : userDetail.extensionSessions.map((session) => (
                         <p key={session.id} className="text-xs admin-muted mb-1">
                           {session.deviceName} · last {formatDate(session.lastUsedAt)} · exp {formatDate(session.expiresAt)}
@@ -1309,11 +1393,126 @@ export default function AdminPanel() {
 
           {tab === 'servers' && (
             <div className="space-y-4">
-              <div className="admin-card p-4 text-xs admin-muted">
-                DB-каталог для сайта. Runtime для расширения — ноды Remnawave ({remnawave?.nodesCount ?? 0}).
+              <div className="admin-card p-4 text-xs admin-muted space-y-2">
+                <p>
+                  Локации расширения — ноды Remnawave. Вкл/выкл и hostname HTTPS-прокси (не только RU):
+                  у каждой включённой ноды свой host:port. Сейчас обычно <span className="admin-mono">rassiya.jetsale.online:8443</span>.
+                  Без hostname локация в popup не появится.
+                </p>
+                <button
+                  type="button"
+                  disabled={actionBusy === 'ext-nodes-sync'}
+                  onClick={() => runAction('ext-nodes-sync', async () => {
+                    const res = await syncAdminExtensionNodes()
+                    await loadTab('servers', true)
+                    return res.message
+                  })}
+                  className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                >
+                  Sync нод из Remnawave
+                </button>
               </div>
+
               <div className="admin-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">Серверы DB ({servers.length})</div>
+                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">
+                  Локации расширения ({remnawave?.nodes.length ?? 0})
+                </div>
+                <div>
+                  {!remnawave || remnawave.nodes.length === 0 ? (
+                    <div className="px-5 py-10 text-sm admin-muted">Ноды не получены — нажмите Sync</div>
+                  ) : (
+                    <>
+                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1.4fr_1fr_auto]">
+                      <span>Нода</span>
+                      <span>Proxy host</span>
+                      <span className="lg:text-right">В расширении</span>
+                    </div>
+                    {remnawave.nodes.map((node) => {
+                      const enabled = Boolean(node.extensionEnabled)
+                      const host = node.extensionHostname || ''
+                      const port = node.extensionPort || 8443
+                      return (
+                        <div key={node.uuid} className="admin-table-row px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm">{node.name}</p>
+                            <p className="text-xs admin-muted mt-1">
+                              {node.countryCode} · <span className="admin-mono">{node.uuid.slice(0, 8)}</span>
+                              {node.isSupportedProxy ? ' · default RU proxy' : ' · SQUAD'}
+                            </p>
+                            <p className="text-[11px] admin-muted mt-1">
+                              inbounds: {node.activeInbounds?.length ? node.activeInbounds.join(', ') : '—'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 lg:w-[280px]">
+                            <input
+                              type="text"
+                              defaultValue={host}
+                              placeholder="hostname"
+                              className="admin-input text-xs w-[160px]"
+                              id={`ext-host-${node.uuid}`}
+                            />
+                            <input
+                              type="number"
+                              defaultValue={port}
+                              className="admin-input text-xs w-[72px]"
+                              id={`ext-port-${node.uuid}`}
+                            />
+                            <button
+                              type="button"
+                              disabled={actionBusy === `ext-host-${node.uuid}`}
+                              onClick={() => runAction(`ext-host-${node.uuid}`, async () => {
+                                const hostEl = document.getElementById(`ext-host-${node.uuid}`) as HTMLInputElement | null
+                                const portEl = document.getElementById(`ext-port-${node.uuid}`) as HTMLInputElement | null
+                                const nextHost = hostEl?.value.trim() || null
+                                const nextPort = Number(portEl?.value || 8443)
+                                const res = await updateAdminExtensionNode(node.uuid, {
+                                  hostname: nextHost,
+                                  port: Number.isFinite(nextPort) ? nextPort : 8443,
+                                })
+                                await loadTab('servers', true)
+                                return res.message
+                              })}
+                              className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                            >
+                              Save
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 lg:justify-end">
+                            <span className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                              enabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'
+                            }`}>
+                              {enabled ? 'ON' : 'OFF'}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={actionBusy === `ext-${node.uuid}`}
+                              onClick={() => runAction(`ext-${node.uuid}`, async () => {
+                                const hostEl = document.getElementById(`ext-host-${node.uuid}`) as HTMLInputElement | null
+                                const portEl = document.getElementById(`ext-port-${node.uuid}`) as HTMLInputElement | null
+                                const nextHost = hostEl?.value.trim() || node.extensionHostname || null
+                                const nextPort = Number(portEl?.value || node.extensionPort || 8443)
+                                const res = await updateAdminExtensionNode(node.uuid, {
+                                  isEnabled: !enabled,
+                                  ...( !enabled && nextHost ? { hostname: nextHost, port: nextPort } : {}),
+                                })
+                                await loadTab('servers', true)
+                                return res.message
+                              })}
+                              className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                            >
+                              {enabled ? 'Выкл' : 'Вкл'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="admin-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">Серверы DB (legacy, {servers.length})</div>
                 <div>
                   {servers.length === 0 ? (
                     <div className="px-5 py-10 text-sm admin-muted">Серверы не найдены</div>
@@ -1353,36 +1552,6 @@ export default function AdminPanel() {
                   )}
                 </div>
               </div>
-              <div className="admin-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">
-                  Ноды Remnawave ({remnawave?.nodes.length ?? 0})
-                </div>
-                <div>
-                  {!remnawave || remnawave.nodes.length === 0 ? (
-                    <div className="px-5 py-10 text-sm admin-muted">Ноды не получены</div>
-                  ) : (
-                    <>
-                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1fr_auto]">
-                      <span>Нода</span>
-                      <span className="lg:text-right">Тип</span>
-                    </div>
-                    {remnawave.nodes.map((node) => (
-                      <div key={node.uuid} className="admin-table-row px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-sm">{node.name}</p>
-                          <p className="text-xs admin-muted mt-1">{node.countryCode} · <span className="admin-mono">{node.uuid.slice(0, 8)}</span></p>
-                        </div>
-                        <span className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                          node.isSupportedProxy ? 'bg-teal-500/15 text-teal-200' : 'bg-white/5 text-[var(--admin-text-soft)]'
-                        }`}>
-                          {node.isSupportedProxy ? 'jetsale.online PROXY' : 'SQUAD'}
-                        </span>
-                      </div>
-                    ))}
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1407,7 +1576,7 @@ export default function AdminPanel() {
                           {item.deviceId ? ` · ${item.deviceId}` : ''} · last {formatDate(item.lastUsedAt)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="w-fit text-[11px] font-bold px-2.5 py-1 rounded-full bg-teal-500/15 text-teal-200">
                           до {formatDate(item.expiresAt)}
                         </span>
@@ -1416,11 +1585,24 @@ export default function AdminPanel() {
                           disabled={actionBusy === `sess-${item.id}`}
                           onClick={() => runAction(`sess-${item.id}`, async () => {
                             const res = await revokeAdminSession(item.id)
+                            await loadTab('sessions', true)
                             return res.message
                           })}
                           className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-200 hover:bg-rose-500/10 disabled:opacity-60"
                         >
                           Отключить
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actionBusy === `sess-all-${item.user.id}`}
+                          onClick={() => runAction(`sess-all-${item.user.id}`, async () => {
+                            const res = await revokeAdminUserSessions(item.user.id)
+                            await loadTab('sessions', true)
+                            return res.message
+                          })}
+                          className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-200 hover:bg-rose-500/10 disabled:opacity-60"
+                        >
+                          Все устройства
                         </button>
                       </div>
                     </div>
@@ -1442,8 +1624,20 @@ export default function AdminPanel() {
               <div>
                 <p className="font-bold">Рассылка (брендированные письма)</p>
                 <p className="text-xs admin-muted mt-1">
-                  Сначала отправьте себе (audience = me), затем trial / premium / all. До 500 получателей за раз.
+                  Сначала тест себе (кнопка ниже или audience = me), затем trial / premium / all. До 500 за раз.
+                  Счётчики SMTP — на вкладке «Обзор».
                 </p>
+                <button
+                  type="button"
+                  disabled={actionBusy === 'mail-test-wl'}
+                  className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                  onClick={() => runAction('mail-test-wl', async () => {
+                    const res = await sendAdminMailTest()
+                    return res.message
+                  })}
+                >
+                  Быстрый тест SMTP себе
+                </button>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <label className="block text-xs admin-muted">
@@ -1688,17 +1882,30 @@ export default function AdminPanel() {
               </div>
 
               <div className="admin-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">
-                  Доступные ноды ({remnawave?.nodes.length ?? 0})
+                <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold flex flex-wrap items-center justify-between gap-2">
+                  <span>Доступные ноды ({remnawave?.nodes.length ?? 0})</span>
+                  <button
+                    type="button"
+                    disabled={actionBusy === 'ext-nodes-sync-rw'}
+                    onClick={() => runAction('ext-nodes-sync-rw', async () => {
+                      const res = await syncAdminExtensionNodes()
+                      await loadTab('remnawave', true)
+                      return res.message
+                    })}
+                    className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                  >
+                    Sync + управление в «Серверы»
+                  </button>
                 </div>
                 <div>
                   {!remnawave || remnawave.nodes.length === 0 ? (
                     <div className="px-5 py-10 text-sm admin-muted">Ноды не получены</div>
                   ) : (
                     <>
-                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1fr_auto]">
+                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1fr_auto_auto]">
                       <span>Нода</span>
-                      <span className="lg:text-right">Тип</span>
+                      <span>Тип</span>
+                      <span className="lg:text-right">Расширение</span>
                     </div>
                     {remnawave.nodes.map((node) => (
                       <div
@@ -1712,6 +1919,7 @@ export default function AdminPanel() {
                           </p>
                           <p className="text-[11px] admin-muted mt-1">
                             inbounds: {node.activeInbounds?.length ? node.activeInbounds.join(', ') : '—'}
+                            {node.extensionHostname ? ` · proxy ${node.extensionHostname}:${node.extensionPort || 8443}` : ''}
                           </p>
                         </div>
                         <span className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
@@ -1720,6 +1928,13 @@ export default function AdminPanel() {
                             : 'bg-white/5 text-[var(--admin-text-soft)]'
                         }`}>
                           {node.isSupportedProxy ? 'jetsale.online PROXY' : 'SQUAD'}
+                        </span>
+                        <span className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                          node.extensionEnabled
+                            ? 'bg-emerald-500/15 text-emerald-300'
+                            : 'bg-rose-500/15 text-rose-300'
+                        }`}>
+                          {node.extensionEnabled ? 'ON в popup' : 'OFF'}
                         </span>
                       </div>
                     ))}
@@ -1827,63 +2042,411 @@ export default function AdminPanel() {
                 {planRows.length === 0 ? (
                   <div className="px-5 py-10 text-sm admin-muted">Нет тарифов</div>
                 ) : (
-                  <>
-                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1fr_auto]">
-                      <span>План</span>
-                      <span className="lg:text-right">Цена / срок</span>
-                    </div>
-                    {planRows.map((plan) => (
-                      <div key={plan.id} className="admin-table-row px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-sm">{plan.name}</p>
-                          <p className="text-xs admin-muted mt-1">
-                            {plan.slug || '—'} · {plan.deviceLimit} устр.
-                            {plan.description ? ` · ${plan.description}` : ''}
-                          </p>
+                  <div className="divide-y divide-[var(--admin-border-soft)]">
+                    {planRows.map((plan) => {
+                      const editing = editingPlanId === plan.id
+                      return (
+                        <div key={plan.id} className="px-5 py-4 space-y-3">
+                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm">{plan.name}</p>
+                              <p className="text-xs admin-muted mt-1">
+                                slug: <span className="admin-mono">{plan.slug || '—'}</span> · {plan.deviceLimit} устр.
+                                {plan.description ? ` · ${plan.description}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-bold">{money(plan.price)}</span>
+                              <span className="text-xs admin-muted">{plan.durationDays}д</span>
+                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${plan.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5'}`}>
+                                {plan.isActive ? 'ACTIVE' : 'OFF'}
+                              </span>
+                              <button
+                                type="button"
+                                className="admin-btn text-[11px] py-1.5"
+                                onClick={() => {
+                                  if (editing) {
+                                    setEditingPlanId(null)
+                                    return
+                                  }
+                                  setEditingPlanId(plan.id)
+                                  setPlanDraft({
+                                    name: plan.name,
+                                    description: plan.description || '',
+                                    price: String(plan.price),
+                                    durationDays: String(plan.durationDays),
+                                    deviceLimit: String(plan.deviceLimit),
+                                  })
+                                }}
+                              >
+                                {editing ? 'Закрыть' : 'Редактировать'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actionBusy === `plan-toggle-${plan.id}`}
+                                className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                                onClick={() => runAction(`plan-toggle-${plan.id}`, async () => {
+                                  const res = await updateAdminPlan(plan.id, { isActive: !plan.isActive })
+                                  await loadTab('plans', true)
+                                  return res.message
+                                })}
+                              >
+                                {plan.isActive ? 'Выкл' : 'Вкл'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {editing && (
+                            <div className="rounded-xl border border-[var(--admin-border-soft)] bg-white/5 p-4 grid sm:grid-cols-2 gap-3">
+                              <label className="text-xs admin-muted block">
+                                Название
+                                <input
+                                  className="admin-input mt-1 w-full"
+                                  value={planDraft.name}
+                                  onChange={(e) => setPlanDraft((d) => ({ ...d, name: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Цена (₽)
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="1"
+                                  className="admin-input mt-1 w-full"
+                                  value={planDraft.price}
+                                  onChange={(e) => setPlanDraft((d) => ({ ...d, price: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Срок (дней)
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="admin-input mt-1 w-full"
+                                  value={planDraft.durationDays}
+                                  onChange={(e) => setPlanDraft((d) => ({ ...d, durationDays: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Устройств
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={50}
+                                  className="admin-input mt-1 w-full"
+                                  value={planDraft.deviceLimit}
+                                  onChange={(e) => setPlanDraft((d) => ({ ...d, deviceLimit: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block sm:col-span-2">
+                                Описание
+                                <input
+                                  className="admin-input mt-1 w-full"
+                                  value={planDraft.description}
+                                  onChange={(e) => setPlanDraft((d) => ({ ...d, description: e.target.value }))}
+                                />
+                              </label>
+                              <div className="sm:col-span-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `plan-save-${plan.id}`}
+                                  className="admin-btn admin-btn-accent text-[11px] py-1.5 disabled:opacity-60"
+                                  onClick={() => runAction(`plan-save-${plan.id}`, async () => {
+                                    const price = Number(planDraft.price)
+                                    const durationDays = Number(planDraft.durationDays)
+                                    const deviceLimit = Number(planDraft.deviceLimit)
+                                    if (!planDraft.name.trim()) throw new Error('Укажите название')
+                                    if (!Number.isFinite(price) || price < 0) throw new Error('Некорректная цена')
+                                    if (!Number.isFinite(durationDays) || durationDays < 1) throw new Error('Некорректный срок')
+                                    if (!Number.isFinite(deviceLimit) || deviceLimit < 1) throw new Error('Некорректный лимит устройств')
+                                    const res = await updateAdminPlan(plan.id, {
+                                      name: planDraft.name.trim(),
+                                      description: planDraft.description.trim() || null,
+                                      price,
+                                      durationDays,
+                                      deviceLimit,
+                                    })
+                                    setEditingPlanId(null)
+                                    await loadTab('plans', true)
+                                    return res.message
+                                  })}
+                                >
+                                  Сохранить
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">{money(plan.price)}</span>
-                          <span className="text-xs admin-muted">{plan.durationDays}д</span>
-                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${plan.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5'}`}>
-                            {plan.isActive ? 'ACTIVE' : 'OFF'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
+
+              <div className="admin-card p-5 space-y-3">
+                <p className="font-bold">Создать купон</p>
+                <p className="text-xs admin-muted">Код с лендинга / кабинета. Можно % скидки, сумма ₽, бонусные дни — или комбинация.</p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <label className="text-xs admin-muted block">
+                    Код
+                    <input
+                      className="admin-input mt-1 w-full uppercase"
+                      value={couponForm.code}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                      placeholder="WELCOME7"
+                    />
+                  </label>
+                  <label className="text-xs admin-muted block">
+                    Скидка %
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      className="admin-input mt-1 w-full"
+                      value={couponForm.percentOff}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, percentOff: e.target.value }))}
+                      placeholder="10"
+                    />
+                  </label>
+                  <label className="text-xs admin-muted block">
+                    Скидка ₽
+                    <input
+                      type="number"
+                      min={0}
+                      className="admin-input mt-1 w-full"
+                      value={couponForm.amountOff}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, amountOff: e.target.value }))}
+                      placeholder="50"
+                    />
+                  </label>
+                  <label className="text-xs admin-muted block">
+                    Бонус дней
+                    <input
+                      type="number"
+                      min={0}
+                      className="admin-input mt-1 w-full"
+                      value={couponForm.bonusDays}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, bonusDays: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs admin-muted block">
+                    Макс. использований
+                    <input
+                      type="number"
+                      min={1}
+                      className="admin-input mt-1 w-full"
+                      value={couponForm.maxRedemptions}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, maxRedemptions: e.target.value }))}
+                      placeholder="без лимита"
+                    />
+                  </label>
+                  <label className="text-xs admin-muted block">
+                    Действует до
+                    <input
+                      type="datetime-local"
+                      className="admin-input mt-1 w-full"
+                      value={couponForm.endsAt}
+                      onChange={(e) => setCouponForm((f) => ({ ...f, endsAt: e.target.value }))}
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  disabled={actionBusy === 'coupon-create'}
+                  className="admin-btn admin-btn-accent text-[11px] py-1.5 disabled:opacity-60"
+                  onClick={() => runAction('coupon-create', async () => {
+                    const code = couponForm.code.trim().toUpperCase()
+                    if (code.length < 3) throw new Error('Код минимум 3 символа')
+                    const percentOff = couponForm.percentOff ? Number(couponForm.percentOff) : undefined
+                    const amountOff = couponForm.amountOff ? Number(couponForm.amountOff) : undefined
+                    const bonusDays = couponForm.bonusDays ? Number(couponForm.bonusDays) : 0
+                    const maxRedemptions = couponForm.maxRedemptions ? Number(couponForm.maxRedemptions) : undefined
+                    if (percentOff == null && amountOff == null && (!bonusDays || bonusDays <= 0)) {
+                      throw new Error('Укажите % / ₽ скидку или бонусные дни')
+                    }
+                    const endsAt = couponForm.endsAt
+                      ? new Date(couponForm.endsAt).toISOString()
+                      : undefined
+                    const res = await createAdminCoupon({
+                      code,
+                      ...(percentOff != null && Number.isFinite(percentOff) ? { percentOff } : {}),
+                      ...(amountOff != null && Number.isFinite(amountOff) ? { amountOff } : {}),
+                      bonusDays: Number.isFinite(bonusDays) ? bonusDays : 0,
+                      ...(maxRedemptions != null && Number.isFinite(maxRedemptions) ? { maxRedemptions } : {}),
+                      ...(endsAt ? { endsAt } : {}),
+                    })
+                    setCouponForm({
+                      code: '',
+                      percentOff: '',
+                      amountOff: '',
+                      bonusDays: '7',
+                      maxRedemptions: '',
+                      endsAt: '',
+                    })
+                    await loadTab('plans', true)
+                    return res.message
+                  })}
+                >
+                  Создать купон
+                </button>
+              </div>
+
               <div className="admin-card overflow-hidden">
                 <div className="px-5 py-4 border-b border-[var(--admin-border-soft)] font-bold">Купоны ({couponRows.length})</div>
                 {couponRows.length === 0 ? (
                   <div className="px-5 py-10 text-sm admin-muted">Нет купонов</div>
                 ) : (
-                  <>
-                    <div className="admin-grid-head grid-cols-1 lg:grid-cols-[1fr_auto]">
-                      <span>Код</span>
-                      <span className="lg:text-right">Скидка</span>
-                    </div>
-                    {couponRows.map((coupon) => (
-                      <div key={coupon.id} className="admin-table-row px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-                        <div>
-                          <p className="admin-mono font-semibold text-sm">{coupon.code}</p>
-                          <p className="text-xs admin-muted mt-1">
-                            +{coupon.bonusDays}д бонус · {coupon.redeemedCount}
-                            {coupon.maxRedemptions != null ? ` / ${coupon.maxRedemptions}` : ''} исп.
-                            {coupon.endsAt ? ` · до ${formatDate(coupon.endsAt)}` : ''}
-                          </p>
+                  <div className="divide-y divide-[var(--admin-border-soft)]">
+                    {couponRows.map((coupon) => {
+                      const editing = editingCouponId === coupon.id
+                      return (
+                        <div key={coupon.id} className="px-5 py-4 space-y-3">
+                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                            <div>
+                              <p className="admin-mono font-semibold text-sm">{coupon.code}</p>
+                              <p className="text-xs admin-muted mt-1">
+                                +{coupon.bonusDays}д бонус · {coupon.redeemedCount}
+                                {coupon.maxRedemptions != null ? ` / ${coupon.maxRedemptions}` : ''} исп.
+                                {coupon.endsAt ? ` · до ${formatDate(coupon.endsAt)}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-bold">
+                                {coupon.percentOff != null ? `${coupon.percentOff}%` : coupon.amountOff ? money(coupon.amountOff) : '—'}
+                              </span>
+                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${coupon.isActive ? 'bg-teal-500/15 text-teal-200' : 'bg-white/5'}`}>
+                                {coupon.isActive ? 'ON' : 'OFF'}
+                              </span>
+                              <button
+                                type="button"
+                                className="admin-btn text-[11px] py-1.5"
+                                onClick={() => {
+                                  if (editing) {
+                                    setEditingCouponId(null)
+                                    return
+                                  }
+                                  setEditingCouponId(coupon.id)
+                                  setCouponDraft({
+                                    percentOff: coupon.percentOff != null ? String(coupon.percentOff) : '',
+                                    amountOff: coupon.amountOff != null ? String(coupon.amountOff) : '',
+                                    bonusDays: String(coupon.bonusDays ?? 0),
+                                    maxRedemptions: coupon.maxRedemptions != null ? String(coupon.maxRedemptions) : '',
+                                    endsAt: coupon.endsAt
+                                      ? new Date(coupon.endsAt).toISOString().slice(0, 16)
+                                      : '',
+                                  })
+                                }}
+                              >
+                                {editing ? 'Закрыть' : 'Редактировать'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actionBusy === `coupon-toggle-${coupon.id}`}
+                                className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+                                onClick={() => runAction(`coupon-toggle-${coupon.id}`, async () => {
+                                  const res = await updateAdminCoupon(coupon.id, { isActive: !coupon.isActive })
+                                  await loadTab('plans', true)
+                                  return res.message
+                                })}
+                              >
+                                {coupon.isActive ? 'Выкл' : 'Вкл'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {editing && (
+                            <div className="rounded-xl border border-[var(--admin-border-soft)] bg-white/5 p-4 grid sm:grid-cols-2 gap-3">
+                              <label className="text-xs admin-muted block">
+                                Скидка %
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={100}
+                                  className="admin-input mt-1 w-full"
+                                  value={couponDraft.percentOff}
+                                  onChange={(e) => setCouponDraft((d) => ({ ...d, percentOff: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Скидка ₽
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="admin-input mt-1 w-full"
+                                  value={couponDraft.amountOff}
+                                  onChange={(e) => setCouponDraft((d) => ({ ...d, amountOff: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Бонус дней
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="admin-input mt-1 w-full"
+                                  value={couponDraft.bonusDays}
+                                  onChange={(e) => setCouponDraft((d) => ({ ...d, bonusDays: e.target.value }))}
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block">
+                                Макс. использований
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="admin-input mt-1 w-full"
+                                  value={couponDraft.maxRedemptions}
+                                  onChange={(e) => setCouponDraft((d) => ({ ...d, maxRedemptions: e.target.value }))}
+                                  placeholder="без лимита"
+                                />
+                              </label>
+                              <label className="text-xs admin-muted block sm:col-span-2">
+                                Действует до
+                                <input
+                                  type="datetime-local"
+                                  className="admin-input mt-1 w-full"
+                                  value={couponDraft.endsAt}
+                                  onChange={(e) => setCouponDraft((d) => ({ ...d, endsAt: e.target.value }))}
+                                />
+                              </label>
+                              <div className="sm:col-span-2">
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `coupon-save-${coupon.id}`}
+                                  className="admin-btn admin-btn-accent text-[11px] py-1.5 disabled:opacity-60"
+                                  onClick={() => runAction(`coupon-save-${coupon.id}`, async () => {
+                                    const percentOff = couponDraft.percentOff.trim()
+                                      ? Number(couponDraft.percentOff)
+                                      : null
+                                    const amountOff = couponDraft.amountOff.trim()
+                                      ? Number(couponDraft.amountOff)
+                                      : null
+                                    const bonusDays = Number(couponDraft.bonusDays || 0)
+                                    const maxRedemptions = couponDraft.maxRedemptions.trim()
+                                      ? Number(couponDraft.maxRedemptions)
+                                      : null
+                                    const endsAt = couponDraft.endsAt
+                                      ? new Date(couponDraft.endsAt).toISOString()
+                                      : null
+                                    const res = await updateAdminCoupon(coupon.id, {
+                                      percentOff: percentOff != null && Number.isFinite(percentOff) ? percentOff : null,
+                                      amountOff: amountOff != null && Number.isFinite(amountOff) ? amountOff : null,
+                                      bonusDays: Number.isFinite(bonusDays) ? bonusDays : 0,
+                                      maxRedemptions: maxRedemptions != null && Number.isFinite(maxRedemptions) ? maxRedemptions : null,
+                                      endsAt,
+                                    })
+                                    setEditingCouponId(null)
+                                    await loadTab('plans', true)
+                                    return res.message
+                                  })}
+                                >
+                                  Сохранить купон
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">
-                            {coupon.percentOff != null ? `${coupon.percentOff}%` : coupon.amountOff ? money(coupon.amountOff) : '—'}
-                          </span>
-                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${coupon.isActive ? 'bg-teal-500/15 text-teal-200' : 'bg-white/5'}`}>
-                            {coupon.isActive ? 'ON' : 'OFF'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
             </div>

@@ -1,9 +1,22 @@
 import { Bell, CreditCard, Mail, MonitorSmartphone, Network, Receipt, Users } from 'lucide-react'
-import type { AdminRemnawave, AdminServer, AdminStats } from '../api'
+import type { AdminOpsHealth, AdminRemnawave, AdminServer, AdminStats } from '../api'
 import type { getAdminRetention } from '../api'
 import { formatAdminMoney } from './money'
+import { formatDate } from './formatDate'
 
 type RetentionStats = Awaited<ReturnType<typeof getAdminRetention>>
+
+function Flag({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--admin-border-soft)] bg-white/5 px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+        <p className="text-xs font-bold">{label}</p>
+      </div>
+      {detail && <p className="text-[11px] admin-muted mt-1 break-all">{detail}</p>}
+    </div>
+  )
+}
 
 export function OverviewTab({
   stats,
@@ -12,6 +25,13 @@ export function OverviewTab({
   openAlerts,
   waitlistPending,
   servers,
+  opsHealth,
+  statusMessage,
+  onStatusMessageChange,
+  onSaveStatus,
+  onMailTest,
+  onBackupRun,
+  actionBusy,
 }: {
   stats: AdminStats | null
   retention: RetentionStats | null
@@ -19,9 +39,21 @@ export function OverviewTab({
   openAlerts: number
   waitlistPending: number
   servers: AdminServer[]
+  opsHealth: AdminOpsHealth | null
+  statusMessage: string
+  onStatusMessageChange: (value: string) => void
+  onSaveStatus: (mode: AdminOpsHealth['statusOverride']['mode']) => void
+  onMailTest: () => void
+  onBackupRun: () => void
+  actionBusy: string | null
 }) {
   const money = formatAdminMoney
   const remnawaveNodesCount = remnawave?.nodes?.length ?? 0
+  const flags = opsHealth?.flags
+  const backup = opsHealth?.backup
+  const mail = opsHealth?.mail
+  const chrome = opsHealth?.chromeStore
+  const statusMode = opsHealth?.statusOverride?.mode || 'auto'
 
   return (
     <div className="space-y-4">
@@ -50,6 +82,136 @@ export function OverviewTab({
             <p className="text-2xl font-extrabold mt-3">{value ?? '—'}</p>
           </div>
         ))}
+      </div>
+
+      <div className="admin-card p-5 space-y-4">
+        <div>
+          <p className="font-bold">Инфраструктура</p>
+          <p className="text-xs admin-muted mt-1">
+            Proxy Manager, ключ шифрования, SMTP, оплата, Store. Локации расширения с hostname — во вкладке «Серверы».
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <Flag
+            ok={Boolean(flags?.proxyManager) && flags?.proxyManagerReachable === 'ok'}
+            label="Proxy Manager"
+            detail={
+              !flags?.proxyManager
+                ? 'env не задан'
+                : flags.proxyManagerReachable === 'ok'
+                  ? 'reachable'
+                  : flags.proxyManagerReachable === 'missing'
+                    ? 'missing'
+                    : 'не отвечает (туннель?)'
+            }
+          />
+          <Flag ok={Boolean(flags?.proxyCredentialsKey)} label="PROXY_CREDENTIALS_KEY" detail={flags?.proxyCredentialsKey ? 'ok' : 'пустой'} />
+          <Flag ok={Boolean(flags?.smtp)} label="SMTP" detail={mail?.from || '—'} />
+          <Flag ok={Boolean(flags?.turnstile)} label="Turnstile" />
+          <Flag ok={flags?.billingProvider === 'yookassa'} label="Оплата" detail={flags?.billingProvider || '—'} />
+          <Flag
+            ok={Boolean(flags?.chromeStoreLive)}
+            label="Chrome Web Store"
+            detail={chrome?.url || (chrome?.allowedExtensionIds?.length ? `IDs: ${chrome.allowedExtensionIds.join(', ')}` : 'не опубликован')}
+          />
+        </div>
+        {opsHealth?.proxy && (
+          <p className="text-xs admin-muted">
+            HTTPS proxy: <span className="admin-mono">{opsHealth.proxy.publicHost}:{opsHealth.proxy.publicPort}</span>
+            {' · '}
+            в popup ON: {opsHealth.proxy.enabledExtensionServers}
+            {opsHealth.proxy.servers.length > 0 && (
+              <> ({opsHealth.proxy.servers.map((s) => s.name).join(', ')})</>
+            )}
+          </p>
+        )}
+      </div>
+
+      <div className="admin-card p-5 space-y-3">
+        <div>
+          <p className="font-bold">Баннер статуса сайта</p>
+          <p className="text-xs admin-muted mt-1">
+            Ручной режим перекрывает авто-статус на лендинге /status и в кабинете. Сейчас: <span className="admin-mono">{statusMode}</span>
+          </p>
+        </div>
+        <label className="block text-xs admin-muted">
+          Сообщение (опционально)
+          <input
+            className="admin-input mt-1 w-full"
+            value={statusMessage}
+            onChange={(e) => onStatusMessageChange(e.target.value)}
+            placeholder="Кратко: что происходит для пользователей"
+          />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['auto', 'Авто'],
+              ['operational', 'Всё ок'],
+              ['degraded', 'Деградация'],
+              ['major_outage', 'Авария'],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              disabled={actionBusy === `status-${mode}`}
+              onClick={() => onSaveStatus(mode)}
+              className={`admin-btn text-[11px] py-1.5 disabled:opacity-60 ${statusMode === mode ? 'admin-btn-accent' : ''}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="admin-card p-5 space-y-3">
+          <p className="font-bold">Почта</p>
+          <p className="text-xs admin-muted">
+            OK: {mail?.sentOk ?? 0} · fail: {mail?.failed ?? 0} · log-only: {mail?.loggedDev ?? 0}
+          </p>
+          {mail?.lastOkAt && (
+            <p className="text-[11px] admin-muted">Последняя OK: {formatDate(mail.lastOkAt)}{mail.lastTo ? ` → ${mail.lastTo}` : ''}</p>
+          )}
+          {mail?.lastError && (
+            <p className="text-[11px] text-rose-300">Ошибка: {mail.lastError}{mail.lastFailAt ? ` · ${formatDate(mail.lastFailAt)}` : ''}</p>
+          )}
+          <button
+            type="button"
+            disabled={actionBusy === 'mail-test'}
+            onClick={onMailTest}
+            className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+          >
+            Отправить тест себе
+          </button>
+        </div>
+
+        <div className="admin-card p-5 space-y-3">
+          <p className="font-bold">Бэкапы</p>
+          <p className="text-xs admin-muted">
+            {backup?.lastOkAt
+              ? `Последний OK: ${formatDate(backup.lastOkAt)}`
+              : 'Ещё нет stamp LAST_OK.json'}
+          </p>
+          {backup?.lastFile && (
+            <p className="text-[11px] admin-mono break-all">{backup.lastFile}</p>
+          )}
+          {backup?.lastSizeBytes != null && (
+            <p className="text-[11px] admin-muted">{(backup.lastSizeBytes / (1024 * 1024)).toFixed(1)} MB</p>
+          )}
+          {!backup?.scriptExists && (
+            <p className="text-[11px] text-amber-200">Скрипт не найден: {backup?.scriptPath}</p>
+          )}
+          <button
+            type="button"
+            disabled={actionBusy === 'backup-run' || !backup?.scriptExists}
+            onClick={onBackupRun}
+            className="admin-btn text-[11px] py-1.5 disabled:opacity-60"
+          >
+            Запустить бэкап
+          </button>
+        </div>
       </div>
 
       {retention && (
@@ -165,7 +327,8 @@ export function OverviewTab({
       )}
 
       <div className="admin-card p-5 text-sm admin-muted">
-        Runtime локации: Remnawave ({remnawaveNodesCount}). Каталог кабинета: таблица Server ({servers.length}).
+        Remnawave нод: {remnawaveNodesCount}. В расширении можно включить несколько локаций с HTTPS hostname (не только RU) — вкладка «Серверы».
+        Каталог Server DB: {servers.length}.
       </div>
     </div>
   )

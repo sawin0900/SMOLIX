@@ -7,6 +7,7 @@ import {
   getWebSessions,
   revokeWebSession,
   revokeOtherWebSessions,
+  logoutEverywhere,
   requestEmailVerification,
   type User,
 } from '../api'
@@ -19,6 +20,8 @@ import { Skeleton } from './Skeleton'
 export function SettingsView({
   user,
   locale,
+  theme,
+  onThemeChange,
   onLocaleChange,
   onPasswordChanged,
   onError,
@@ -27,6 +30,8 @@ export function SettingsView({
 }: {
   user: User
   locale: Locale
+  theme: 'light' | 'dark' | 'system'
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void
   onLocaleChange: (locale: Locale) => void
   onPasswordChanged: () => void
   onError: (message: string) => void
@@ -41,6 +46,7 @@ export function SettingsView({
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [sessionBusyId, setSessionBusyId] = useState<string | null>(null)
   const [revokeOthersBusy, setRevokeOthersBusy] = useState(false)
+  const [logoutAllBusy, setLogoutAllBusy] = useState(false)
   const t = CABINET_COPY[locale]
   const en = locale === 'en'
 
@@ -161,6 +167,25 @@ export function SettingsView({
               ))}
             </div>
           </div>
+          <div className="sm:col-span-2">
+            <p className="text-xs text-[var(--muted)] mb-1">{t.themeLabel}</p>
+            <div className="mt-1 inline-flex rounded-xl border border-[var(--border)] overflow-hidden flex-wrap">
+              {([
+                ['light', t.themeLight],
+                ['dark', t.themeDark],
+                ['system', t.themeSystem],
+              ] as const).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => onThemeChange(code)}
+                  className={`px-3 py-2 text-xs font-bold ${theme === code ? 'brand-gradient text-white' : 'bg-white text-[var(--muted)]'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="mt-5 grid sm:grid-cols-2 gap-4 pt-5 border-t border-[var(--border)]">
           <div>
@@ -277,6 +302,36 @@ export function SettingsView({
             {revokeOthersBusy ? '…' : t.settingsRevokeOthers}
           </button>
         )}
+      </div>
+
+      <div className="glass-card rounded-2xl p-6 max-w-2xl mb-5">
+        <h3 className="font-bold mb-1">{t.securityTitle}</h3>
+        <p className="text-sm text-[var(--muted)]">{t.securityLead}</p>
+        <p className="text-xs text-[var(--muted)] mt-2">{t.securityLogoutAllHint}</p>
+        <button
+          type="button"
+          disabled={logoutAllBusy}
+          onClick={async () => {
+            setLogoutAllBusy(true)
+            try {
+              const result = await logoutEverywhere()
+              onToast(result.message, 'success')
+              await loadSessions()
+            } catch (err) {
+              onError(err instanceof Error ? err.message : t.genericError)
+            } finally {
+              setLogoutAllBusy(false)
+            }
+          }}
+          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-bold hover:bg-rose-100 disabled:opacity-60"
+        >
+          {logoutAllBusy ? '…' : t.securityLogoutAll}
+        </button>
+        <p className="text-xs text-[var(--muted)] mt-3">
+          {en
+            ? 'Another account: sign out below, then register / log in with a different email.'
+            : 'Другой аккаунт: выйдите ниже и войдите / зарегистрируйтесь другим email.'}
+        </p>
       </div>
 
       <form onSubmit={onSubmit} className="glass-card rounded-2xl p-6 max-w-2xl space-y-4">

@@ -28,6 +28,31 @@ C. Смена пароля Postgres (если ещё ChangeMe)
 4) systemctl restart smolix-api
 5) Сразу сделать backup-jetsale-api.sh
 
+C2. Chrome-прокси (расширение) — Proxy Manager
+---------------------------------------------
+Ошибка в popup «Proxy Manager configuration is missing» = на VPS пустые:
+  PROXY_MANAGER_URL
+  PROXY_MANAGER_TOKEN
+  PROXY_CREDENTIALS_KEY   # base64, ровно 32 байта
+
+В /var/www/SMOLIX/apps/api/.env задать (значения — из вашей установки proxy-manager
+на ноде rassiya / панели eGames reverse-proxy, НЕ публиковать в git):
+
+  PROXY_MANAGER_URL=https://...   # API менеджера пользователей HTTPS-прокси
+  PROXY_MANAGER_TOKEN=...
+  PROXY_CREDENTIALS_KEY=...       # openssl rand -base64 32
+  PROXY_PUBLIC_HOST=rassiya.jetsale.online
+  PROXY_PUBLIC_PORT=8443
+
+Затем:
+  systemctl restart smolix-api
+  # проверка без секретов:
+  grep -E '^PROXY_MANAGER_URL=|^PROXY_MANAGER_TOKEN=|^PROXY_CREDENTIALS_KEY=' /var/www/SMOLIX/apps/api/.env | sed 's/=.*/=***/'
+
+Если URL/TOKEN есть локально в apps/api/.env на дев-машине — скопировать
+ТЕ ЖЕ значения на Beget (не генерировать новый CREDENTIALS_KEY, если в БД
+уже есть зашифрованные proxyPasswordEncrypted).
+
 D. Cloudflare Turnstile
 -----------------------
 1) https://dash.cloudflare.com → Turnstile → Add site → jetsale.online
@@ -40,6 +65,25 @@ D. Cloudflare Turnstile
    (API /auth/antibot уже отдаёт site key; VITE нужен если фронт читает из import.meta)
 5) npm run build (api+web) && systemctl restart smolix-api
 6) На /auth?mode=register должен появиться виджет «я не робот»
+
+D2. SPF / DKIM / DMARC (Beget + DNS jetsale.online)
+--------------------------------------------------
+Цель: меньше спама, welcome/reset доходят в Inbox.
+1) В панели Beget → Почта / DNS для jetsale.online:
+   - SPF TXT @ :  v=spf1 include:beget.com ~all
+     (если Beget даёт свой include — взять из инструкции почты)
+   - DKIM: включить DKIM в Beget для домена, добавить выданный TXT
+   - DMARC TXT _dmarc :  v=DMARC1; p=none; rua=mailto:info@jetsale.online; fo=1
+2) MAIL_FROM в apps/api/.env = "jetsale.online <info@jetsale.online>" (в кавычках)
+3) Проверка: https://mxtoolbox.com/spf.aspx + отправить себе письмо из админки
+4) Через 1–2 недели при стабильной доставке: DMARC p=quarantine
+
+D3. Remnawave — больше локаций / стран
+-------------------------------------
+1) В панели Remnawave добавить ноды (DE/NL/FI/… ) в squad REMWAVE_SQUAD_UUID
+2) API /extension/servers уже отдаёт все accessible-nodes с названиями стран
+3) Chrome HTTPS-прокси пока на REMWAVE_PROXY_NODE_UUID; телефон/TV — все ноды squad
+4) После добавления нод: проверить кабинет QR + список локаций в popup
 
 E. Chrome Web Store
 -------------------

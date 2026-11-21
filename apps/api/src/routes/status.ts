@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { getAccessibleNodes } from '../lib/remnawave.js'
 import { isYooKassaConfigured } from '../lib/yookassa.js'
+import { getPublicStatusOverride } from '../lib/system-settings.js'
 
 const statusRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async () => {
@@ -35,15 +36,26 @@ const statusRoutes: FastifyPluginAsync = async (app) => {
       },
     })
 
-    const overall =
+    const computed =
       database === 'ok' && remnawave === 'ok'
         ? 'operational'
         : database === 'error'
           ? 'major_outage'
           : 'degraded'
 
+    const override = await getPublicStatusOverride().catch(() => ({
+      mode: 'auto' as const,
+      message: null as string | null,
+    }))
+
+    const overall =
+      override.mode === 'auto' ? computed : override.mode
+
     return {
       status: overall,
+      computedStatus: computed,
+      overrideMode: override.mode,
+      message: override.message || undefined,
       checkedAt: new Date().toISOString(),
       latencyMs: Date.now() - started,
       components: [

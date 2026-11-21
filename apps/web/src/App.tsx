@@ -6,12 +6,14 @@ import AdminPanel from './pages/AdminPanel'
 import LegalPage from './pages/LegalPage'
 import InstallPage from './pages/InstallPage'
 import StatusPage from './pages/StatusPage'
+import HelpPage from './pages/HelpPage'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/install" element={<InstallPage />} />
+      <Route path="/help" element={<HelpPage />} />
       <Route path="/status" element={<StatusPage />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/app/*" element={<AppCabinet />} />

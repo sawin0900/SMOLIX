@@ -370,6 +370,8 @@ export default function Landing() {
   const [cookieOk, setCookieOk] = useState(true)
   const [publicStatus, setPublicStatus] = useState<PublicStatus | null>(null)
   const [demoOn, setDemoOn] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoHint, setPromoHint] = useState('')
 
   const demoPauseUntil = useRef(0)
   const statusViewTracked = useRef(false)
@@ -425,6 +427,21 @@ export default function Landing() {
     getAccount()
       .then((data) => setUser(data.user))
       .catch(() => setUser(null))
+  }, [])
+
+  useEffect(() => {
+    try {
+      const fromQuery = new URLSearchParams(window.location.search).get('promo')
+        || new URLSearchParams(window.location.search).get('coupon')
+      const stored = localStorage.getItem('jetsale_promo') || ''
+      const next = (fromQuery || stored).trim().toUpperCase()
+      if (next) {
+        setPromoCode(next)
+        localStorage.setItem('jetsale_promo', next)
+      }
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   useEffect(() => {
@@ -573,10 +590,38 @@ export default function Landing() {
   const premiumPrimaryLabel = user ? t.premiumPay : t.premiumBuyGuest
   const referralTo = user ? '/app/referral' : '/auth?mode=register'
   const referralLabel = user ? t.referralCta : t.referralCtaGuest
+  const outage = publicStatus?.status === 'degraded' || publicStatus?.status === 'major_outage'
+
+  const savePromo = () => {
+    const code = promoCode.trim().toUpperCase()
+    if (!code) return
+    try {
+      localStorage.setItem('jetsale_promo', code)
+    } catch {
+      /* ignore */
+    }
+    setPromoHint(t.promoSaved)
+    track('promo_saved', { code_len: code.length })
+  }
 
   return (
     <div className="min-h-screen text-[var(--ink)] landing-page">
       <SeoHead {...SEO_PAGES.home} jsonLd={jsonLd} />
+
+      {outage && (
+        <div className={`status-outage-banner ${publicStatus?.status === 'major_outage' ? 'is-down' : 'is-degraded'}`}>
+          <div className="section-shell status-outage-inner">
+            <p>
+              {publicStatus?.message
+                || (publicStatus?.status === 'major_outage' ? t.statusBannerDown : t.statusBannerDegraded)}
+            </p>
+            <Link to="/status" className="status-outage-cta">
+              {t.statusBannerCta}
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      )}
 
       <header className={`landing-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="section-shell landing-nav-inner">
@@ -954,6 +999,54 @@ export default function Landing() {
           </Reveal>
 
           <Reveal className="landing-block reveal">
+            <section className="promo-panel" id="promo">
+              <p className="text-teal-700 text-sm font-bold mb-2">{t.promoLabel}</p>
+              <h2 className="text-2xl font-extrabold tracking-[-0.4px]">
+                {locale === 'ru' ? 'Промокод с лендинга' : 'Landing promo code'}
+              </h2>
+              <p className="mt-2 text-sm text-[var(--muted)] max-w-xl">
+                {locale === 'ru'
+                  ? 'Введите код — сохраним в браузере и подставим при оплате Premium в кабинете.'
+                  : 'Enter a code — we save it in the browser and apply it at Premium checkout.'}
+              </p>
+              <div className="promo-row mt-5">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => {
+                    setPromoCode(e.target.value.toUpperCase())
+                    setPromoHint('')
+                  }}
+                  placeholder={t.promoPlaceholder}
+                  className="promo-input"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button type="button" className="btn-primary px-5 py-3" onClick={savePromo}>
+                  {t.promoApply}
+                </button>
+              </div>
+              {promoHint && <p className="text-sm text-teal-800 mt-3 font-semibold">{promoHint}</p>}
+              {!user && (
+                <Link
+                  to={`/auth?mode=register${promoCode.trim() ? `&promo=${encodeURIComponent(promoCode.trim().toUpperCase())}` : ''}`}
+                  className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-teal-800"
+                >
+                  {t.navStart} <ArrowRight size={14} />
+                </Link>
+              )}
+              {user && (
+                <Link
+                  to="/app/subscription"
+                  className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-teal-800"
+                >
+                  {t.premiumPay} <ArrowRight size={14} />
+                </Link>
+              )}
+            </section>
+          </Reveal>
+
+          <Reveal className="landing-block reveal">
           <section className="social-proof landing-band">
             <p className="text-teal-700 text-sm font-bold mb-3">{t.socialEyebrowAlt}</p>
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-[-0.6px]">{t.socialTitleAlt}</h2>
@@ -1157,6 +1250,7 @@ export default function Landing() {
                 <li><a href="#how" className="hover:text-teal-800 transition">{t.navHow}</a></li>
                 <li><a href="#plans" className="hover:text-teal-800 transition">{t.navPlans}</a></li>
                 <li><a href="#install" className="hover:text-teal-800 transition">{t.navInstall}</a></li>
+                <li><Link to="/help" className="hover:text-teal-800 transition">{t.footerHelp}</Link></li>
               </ul>
             </div>
             <div>
@@ -1172,6 +1266,7 @@ export default function Landing() {
                 <li><Link to="/policy" className="hover:text-teal-800 transition">{t.footerPrivacy}</Link></li>
                 <li><Link to="/oferta" className="hover:text-teal-800 transition">{t.footerTerms}</Link></li>
                 <li><Link to="/status" className="hover:text-teal-800 transition">{t.footerStatus}</Link></li>
+                <li><Link to="/help" className="hover:text-teal-800 transition">{t.footerHelp}</Link></li>
                 <li><a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-teal-800 transition">{SUPPORT_EMAIL}</a></li>
               </ul>
             </div>

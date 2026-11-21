@@ -87,7 +87,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
 
     const extensionLinked = deviceCount > 0
     const lastUsedAt = latestExtension?.lastUsedAt || latestExtension?.createdAt || null
-    const staleMs = 7 * 86400000
+    const staleMs = 36 * 60 * 60 * 1000 // 36h without popup activity
     const extensionStale = Boolean(
       lastUsedAt && Date.now() - new Date(lastUsedAt).getTime() > staleMs,
     )
@@ -120,6 +120,7 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
               : null,
             planName: subscription.plan.name,
             deviceLimit: subscription.plan.deviceLimit,
+            trafficLimitBytes: subscription.plan.trafficLimit?.toString() ?? null,
           }
         : null,
       devices: {
@@ -536,17 +537,17 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
         id: 'extension-offline',
         level: 'warning',
         title: 'Расширение не залогинено',
-        text: 'Нет активной сессии Chrome-расширения. Установите jetsale.online и войдите тем же email.',
+        text: 'Откройте popup jetsale.online и войдите тем же email — кабинет увидит сессию.',
         href: '/install',
       })
     } else {
       const last = latestExt?.lastUsedAt || latestExt?.createdAt
-      if (last && Date.now() - new Date(last).getTime() > 7 * 86400000) {
+      if (last && Date.now() - new Date(last).getTime() > 36 * 60 * 60 * 1000) {
         notices.push({
           id: 'extension-stale',
-          level: 'info',
-          title: 'Расширение давно не использовалось',
-          text: 'Последний вход в popup был больше 7 дней назад — откройте расширение и подключитесь.',
+          level: 'warning',
+          title: 'Расширение давно не выходило в сеть',
+          text: 'Откройте popup и войдите / нажмите «Подключить» — так кабинет обновит статус.',
           href: '/install',
         })
       }
@@ -565,12 +566,20 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
 
     if (subscription?.isTrial && subscription.expiresAt) {
       const remainingMs = subscription.expiresAt.getTime() - Date.now()
-      if (remainingMs > 0 && remainingMs <= 3 * 86400000) {
+      if (remainingMs > 0 && remainingMs <= 86400000) {
         notices.push({
-          id: 'trial-ending',
+          id: 'trial-ending-1d',
+          level: 'critical',
+          title: 'Trial заканчивается сегодня',
+          text: 'Осталось меньше суток. Оформите Premium, чтобы не потерять полный интернет.',
+          href: '/app/subscription',
+        })
+      } else if (remainingMs > 0 && remainingMs <= 3 * 86400000) {
+        notices.push({
+          id: 'trial-ending-3d',
           level: 'warning',
-          title: 'Trial скоро закончится',
-          text: 'Оформите Premium, чтобы сохранить полный доступ.',
+          title: 'Trial закончится через 1–3 дня',
+          text: 'Мы также отправим письмо на email. Продлите доступ заранее.',
           href: '/app/subscription',
         })
       }
@@ -578,12 +587,20 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
 
     if (subscription && !subscription.isTrial && subscription.expiresAt) {
       const remainingMs = subscription.expiresAt.getTime() - Date.now()
-      if (remainingMs > 0 && remainingMs <= 3 * 86400000) {
+      if (remainingMs > 0 && remainingMs <= 86400000) {
         notices.push({
-          id: 'premium-ending',
+          id: 'premium-ending-1d',
+          level: 'critical',
+          title: 'Premium заканчивается сегодня',
+          text: 'Продлите подписку, чтобы не потерять доступ.',
+          href: '/app/subscription',
+        })
+      } else if (remainingMs > 0 && remainingMs <= 3 * 86400000) {
+        notices.push({
+          id: 'premium-ending-3d',
           level: 'warning',
           title: 'Premium скоро закончится',
-          text: 'Продлите подписку заранее.',
+          text: 'Продлите заранее — письмо-напоминание тоже придёт на email.',
           href: '/app/subscription',
         })
       }
@@ -667,6 +684,39 @@ const accountRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return { message: `Завершено сессий: ${result.count}`, revoked: result.count }
+  })
+
+  /** Sign out everywhere except current browser session: other web + all extension devices. */
+  app.post('/security/logout-everywhere', async (request, reply) => {
+    const user = await getSessionUser(request)
+    if (!user || user.status !== 'ACTIVE') {
+      return reply.code(401).send({ error: 'Требуется авторизация' })
+    }
+    if (rejectIfImpersonating(user, reply)) return
+
+    const token = request.cookies?.[COOKIE_NAME]
+    if (!token) {
+      return reply.code(401).send({ error: 'Требуется авторизация' })
+    }
+
+    const [web, ext] = await prisma.$transaction([
+      prisma.session.deleteMany({
+        where: {
+          userId: user.id,
+          tokenHash: { not: hashToken(token) },
+        },
+      }),
+      prisma.extensionSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ])
+
+    return {
+      message: `Вышли везде: сайт ${web.count}, расширение ${ext.count}. Текущий браузер остаётся.`,
+      revokedWeb: web.count,
+      revokedExtension: ext.count,
+    }
   })
 }
 

@@ -37,10 +37,33 @@ import { DevicesView } from '../cabinet/DevicesView'
 import { HistoryView } from '../cabinet/HistoryView'
 import { SettingsView } from '../cabinet/SettingsView'
 
+type CabinetTheme = 'light' | 'dark' | 'system'
+
+function readCabinetTheme(): CabinetTheme {
+  try {
+    const v = localStorage.getItem('jetsale_cabinet_theme')
+    if (v === 'light' || v === 'dark' || v === 'system') return v
+  } catch {
+    /* ignore */
+  }
+  return 'system'
+}
+
+function resolveTheme(theme: CabinetTheme) {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return theme
+}
+
 export default function AppCabinet() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [locale, setLocale] = useState<Locale>(() => readCabinetLocale())
+  const [theme, setTheme] = useState<CabinetTheme>(() => readCabinetTheme())
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
+    typeof window === 'undefined' ? 'light' : resolveTheme(readCabinetTheme()),
+  )
   const t = CABINET_COPY[locale]
   const welcome = searchParams.get('welcome') === '1'
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -66,6 +89,21 @@ export default function AppCabinet() {
     }, 12000)
     return () => window.clearTimeout(timer)
   }, [welcome, searchParams, setSearchParams])
+
+  useEffect(() => {
+    const apply = () => setResolvedTheme(resolveTheme(theme))
+    apply()
+    try {
+      localStorage.setItem('jetsale_cabinet_theme', theme)
+    } catch {
+      /* ignore */
+    }
+    if (theme !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => apply()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [theme])
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
@@ -172,11 +210,11 @@ export default function AppCabinet() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen app-bg text-[var(--ink)]">
+    <div className="min-h-screen app-bg text-[var(--ink)] cabinet-shell" data-theme={resolvedTheme}>
       <SeoHead {...SEO_PAGES.app} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <header className="h-[76px] bg-white/85 backdrop-blur-xl border-b border-[var(--border)] flex items-center justify-between px-5 md:px-9 sticky top-0 z-30">
+      <header className="h-[76px] bg-white/85 backdrop-blur-xl border-b border-[var(--border)] flex items-center justify-between px-5 md:px-9 sticky top-0 z-30 cabinet-header">
         <div className="flex items-center gap-4">
           <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 rounded-xl hover:bg-[var(--canvas-2)]" aria-label="Меню">
             <Menu size={21} />
@@ -247,8 +285,11 @@ export default function AppCabinet() {
               </div>
               <p className="font-bold text-sm">{t.helpTitle}</p>
               <p className="text-xs text-[var(--muted)] mt-1 leading-5">{t.helpText}</p>
-              <Link to="/install" className="mt-3 text-xs font-bold text-teal-800 flex items-center gap-1">
+              <Link to="/help" className="mt-3 text-xs font-bold text-teal-800 flex items-center gap-1">
                 {t.helpLink} <ArrowUpRight size={13} />
+              </Link>
+              <Link to="/install" className="mt-2 text-xs font-semibold text-teal-700/80 flex items-center gap-1">
+                Установка <ArrowUpRight size={12} />
               </Link>
             </div>
             <button
@@ -363,6 +404,8 @@ export default function AppCabinet() {
                 <SettingsView
                   user={user}
                   locale={locale}
+                  theme={theme}
+                  onThemeChange={setTheme}
                   onLocaleChange={(next) => {
                     writeCabinetLocale(next)
                     setLocale(next)

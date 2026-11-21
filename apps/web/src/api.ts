@@ -423,6 +423,7 @@ export type AccountOverview = {
     remainingSeconds: number | null
     planName: string
     deviceLimit?: number
+    trafficLimitBytes?: string | null
   } | null
   devices: { activeCount: number; deviceLimit?: number }
   extension?: {
@@ -566,6 +567,19 @@ export function sendAdminMailBroadcast(data: {
   })
 }
 
+export type AdminExtensionNode = {
+  id: string
+  remnawaveNodeUuid: string
+  name: string
+  countryCode: string
+  countryName: string
+  hostname: string | null
+  port: number
+  isEnabled: boolean
+  sortOrder: number
+  updatedAt?: string
+}
+
 export type AdminRemnawave = {
   status: 'ok' | 'error'
   panelUrl: string | null
@@ -583,7 +597,12 @@ export type AdminRemnawave = {
     configProfileName: string
     activeInbounds: string[]
     isSupportedProxy: boolean
+    extensionEnabled?: boolean
+    extensionHostname?: string | null
+    extensionPort?: number
+    extensionNodeId?: string | null
   }>
+  extensionNodes?: AdminExtensionNode[]
   subPublicDomain?: string
   contract: {
     apiPrefix: string
@@ -600,6 +619,29 @@ export function syncAdminRemnawaveUser(userId: string) {
   return request<{ message: string; result: unknown }>('/admin/remnawave/sync-user', {
     method: 'POST',
     body: JSON.stringify({ userId }),
+  })
+}
+
+export function syncAdminExtensionNodes() {
+  return request<{
+    message: string
+    created: number
+    updated: number
+    total: number
+    extensionNodes: AdminExtensionNode[]
+  }>('/admin/extension-nodes/sync', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function updateAdminExtensionNode(
+  nodeUuid: string,
+  data: { isEnabled?: boolean; hostname?: string | null; port?: number; name?: string },
+) {
+  return request<{ message: string; node: AdminExtensionNode }>(`/admin/extension-nodes/${nodeUuid}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   })
 }
 
@@ -661,6 +703,9 @@ export function getReferral() {
 
 export type PublicStatus = {
   status: 'operational' | 'degraded' | 'major_outage'
+  computedStatus?: 'operational' | 'degraded' | 'major_outage'
+  overrideMode?: 'auto' | 'operational' | 'degraded' | 'major_outage'
+  message?: string
   checkedAt: string
   latencyMs: number
   components: Array<{
@@ -681,6 +726,96 @@ export type PublicStatus = {
 
 export function getPublicStatus() {
   return request<PublicStatus>('/status')
+}
+
+export type AdminOpsHealth = {
+  checkedAt: string
+  flags: {
+    proxyManager: boolean
+    proxyManagerReachable: 'ok' | 'error' | 'missing'
+    proxyCredentialsKey: boolean
+    turnstile: boolean
+    smtp: boolean
+    billingProvider: string
+    chromeStoreLive: boolean
+    referralEnabled: boolean
+  }
+  chromeStore: {
+    url: string | null
+    allowedExtensionIds: string[]
+  }
+  proxy: {
+    publicHost: string
+    publicPort: number
+    enabledExtensionServers: number
+    servers: Array<{
+      id: string
+      name: string
+      country: string
+      countryCode: string
+      hostname: string
+      port: number
+    }>
+  }
+  mail: {
+    smtpConfigured: boolean
+    from: string
+    sentOk: number
+    failed: number
+    loggedDev: number
+    lastError: string | null
+    lastOkAt: string | null
+    lastFailAt: string | null
+    lastTo: string | null
+  }
+  backup: {
+    stampPath: string
+    scriptPath: string
+    scriptExists: boolean
+    lastOkAt: string | null
+    lastFile: string | null
+    lastSizeBytes: number | null
+    error: string | null
+  }
+  statusOverride: {
+    mode: 'auto' | 'operational' | 'degraded' | 'major_outage'
+    message?: string | null
+  }
+}
+
+export function getAdminOpsHealth() {
+  return request<AdminOpsHealth>('/admin/ops-health')
+}
+
+export function updateAdminPublicStatus(data: {
+  mode: 'auto' | 'operational' | 'degraded' | 'major_outage'
+  message?: string | null
+}) {
+  return request<{ message: string; override: AdminOpsHealth['statusOverride'] }>('/admin/public-status', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export function sendAdminMailTest() {
+  return request<{ message: string; mail: AdminOpsHealth['mail'] }>('/admin/mail/test', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function runAdminBackup() {
+  return request<{ message: string; backup: AdminOpsHealth['backup'] }>('/admin/backup/run', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function revokeAdminUserSessions(userId: string) {
+  return request<{ message: string; revoked: number }>(`/admin/users/${userId}/sessions/revoke-all`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
 }
 
 export function getAdminStats() {
@@ -856,18 +991,39 @@ export function getAdminCoupons() {
   return request<{ coupons: Array<{ id: string; code: string; percentOff?: number | null; amountOff?: string | null; bonusDays: number; maxRedemptions?: number | null; redeemedCount: number; isActive: boolean; endsAt?: string | null }> }>('/admin/coupons')
 }
 
-export function createAdminCoupon(data: { code: string; percentOff?: number; amountOff?: number; bonusDays?: number; maxRedemptions?: number; endsAt?: string }) {
+export function createAdminCoupon(data: {
+  code: string
+  percentOff?: number
+  amountOff?: number
+  bonusDays?: number
+  maxRedemptions?: number
+  endsAt?: string
+}) {
   return request<{ message: string }>('/admin/coupons', {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
-export function toggleAdminCoupon(couponId: string, isActive: boolean) {
+export function updateAdminCoupon(
+  couponId: string,
+  data: Partial<{
+    isActive: boolean
+    percentOff: number | null
+    amountOff: number | null
+    bonusDays: number
+    maxRedemptions: number | null
+    endsAt: string | null
+  }>,
+) {
   return request<{ message: string }>(`/admin/coupons/${couponId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ isActive }),
+    body: JSON.stringify(data),
   })
+}
+
+export function toggleAdminCoupon(couponId: string, isActive: boolean) {
+  return updateAdminCoupon(couponId, { isActive })
 }
 
 export function markAdminOrderPaid(orderId: string) {
@@ -948,6 +1104,16 @@ export function revokeOtherWebSessions() {
     method: 'POST',
     body: JSON.stringify({}),
   })
+}
+
+export function logoutEverywhere() {
+  return request<{ message: string; revokedWeb: number; revokedExtension: number }>(
+    '/account/security/logout-everywhere',
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  )
 }
 
 export function requestEmailVerification() {

@@ -54,3 +54,8 @@ find "$BACKUP_DIR" -type f -name 'jetsale-*.tar.gz' -mtime "+$KEEP_DAYS" -delete
 
 echo "[ok] $TAR"
 ls -lh "$TAR"
+
+# Stamp for admin panel status
+SIZE_BYTES="$(wc -c < "$TAR" | tr -d ' ')"
+printf '{"okAt":"%s","file":"%s","sizeBytes":%s}\n' "$(date -Is)" "$TAR" "$SIZE_BYTES" > "$BACKUP_DIR/LAST_OK.json"
+chmod 600 "$BACKUP_DIR/LAST_OK.json" 2>/dev/null || true

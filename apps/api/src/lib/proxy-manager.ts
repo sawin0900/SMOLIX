@@ -2,12 +2,20 @@ import { randomBytes } from 'node:crypto'
 
 const USERNAME_PREFIX = 'smx_'
 
+export function isProxyManagerConfigured() {
+  return Boolean(process.env.PROXY_MANAGER_URL?.trim() && process.env.PROXY_MANAGER_TOKEN?.trim())
+}
+
 function getConfig() {
-  const baseUrl = process.env.PROXY_MANAGER_URL
-  const token = process.env.PROXY_MANAGER_TOKEN
+  const baseUrl = process.env.PROXY_MANAGER_URL?.trim()
+  const token = process.env.PROXY_MANAGER_TOKEN?.trim()
 
   if (!baseUrl || !token) {
-    throw new Error('Proxy Manager configuration is missing')
+    const err = new Error(
+      'Proxy Manager не настроен на сервере (PROXY_MANAGER_URL / PROXY_MANAGER_TOKEN). Обратитесь к поддержке.',
+    ) as Error & { code?: string }
+    err.code = 'PROXY_MANAGER_MISSING'
+    throw err
   }
 
   return { baseUrl: baseUrl.replace(/\/+$/, ''), token }

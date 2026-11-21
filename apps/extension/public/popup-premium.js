@@ -1,8 +1,5 @@
-const API_URLS = [
-  "https://jetsale.online/api",
-  "http://127.0.0.1:3001",
-  "http://localhost:3001",
-];
+// Production-first: no localhost fallback (stable login without local API).
+const API_URLS = ["https://jetsale.online/api"];
 const $ = (id) => document.getElementById(id);
 
 const screens = {
@@ -77,6 +74,18 @@ function isNetworkError(error) {
   return /Failed to fetch|NetworkError|fetch|API недоступен|AbortError|timeout|Timed out/i.test(message);
 }
 
+function humanizeError(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (isNetworkError(error)) return "Нет сети. Проверьте интернет и попробуйте снова.";
+  if (/SUBSCRIPTION_REQUIRED|пробн|подписк.*конч|trial|закончил/i.test(message)) {
+    return "Trial кончился. YouTube бесплатно; для полного интернета откройте кабинет → Premium.";
+  }
+  if (/сесси|авториза|UNAUTHORIZED|INVALID_SESSION|401/i.test(message)) {
+    return "Сессия истекла. Войдите снова.";
+  }
+  return message || "Что-то пошло не так";
+}
+
 function setOfflineBanner(visible, message) {
   const banner = $("offlineBanner");
   if (!banner) return;
@@ -89,22 +98,24 @@ function setAuthProxyBanner(visible) {
   if (banner) banner.hidden = !visible;
 }
 
-function isSmolixProxyConfig(value) {
+function isSmolixProxyConfig(value, endpointHost) {
+  const pac = value?.pacScript?.data || "";
+  const host = endpointHost || "rassiya.jetsale.online";
   const proxy = value?.rules?.singleProxy;
-  const full =
+  const fullFixed =
     value?.mode === "fixed_servers" &&
-    proxy?.host === "rassiya.jetsale.online" &&
-    proxy?.port === 8443;
-  const youtube =
+    proxy?.host === host;
+  const pacMode =
     value?.mode === "pac_script" &&
-    value?.pacScript?.data?.includes("googlevideo.com");
-  return Boolean(full || youtube);
+    pac.includes(host) &&
+    (pac.includes("googlevideo.com") || pac.includes('dnsDomainIs(h, ".ru")'));
+  return Boolean(fullFixed || pacMode);
 }
 
 async function hasActiveProxy() {
   try {
     const result = await chrome.runtime.sendMessage({ type: "GET_PROXY_STATUS" });
-    return result?.success === true && isSmolixProxyConfig(result.value);
+    return result?.success === true && isSmolixProxyConfig(result.value, result.endpoint?.host);
   } catch {
     return false;
   }
@@ -148,7 +159,9 @@ async function apiRequest(path, options = {}, token = null) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || data.message || `Ошибка сервера: ${response.status}`);
+    const err = new Error(data.error || data.message || `Ошибка сервера: ${response.status}`);
+    if (data.code) err.code = data.code;
+    throw err;
   }
 
   return data;
@@ -272,7 +285,7 @@ async function restoreProxyStatus() {
       "smolixProxyMode",
     ]);
 
-    isConnected = result?.success === true && isSmolixProxyConfig(result.value);
+    isConnected = result?.success === true && isSmolixProxyConfig(result.value, result.endpoint?.host);
     proxyMode =
       storage.smolixProxyMode ||
       (result?.value?.mode === "pac_script" ? "youtube" : "full");
@@ -362,9 +375,9 @@ async function checkSession() {
       setAuthProxyBanner(await hasActiveProxy());
       setText("authError", "Сессия истекла. Войдите снова.");
     } else if (isNetworkError(error)) {
-      await enterOfflineMain("Нет соединения с API");
+      await enterOfflineMain("Нет сети. Проверьте интернет.");
     } else {
-      await enterOfflineMain(message || "Не удалось проверить аккаунт");
+      await enterOfflineMain(humanizeError(error) || "Не удалось проверить аккаунт");
     }
   } finally {
     subscriptionCard?.classList.remove("loading");
@@ -578,6 +591,7 @@ async function openServers() {
       button.type = "button";
       button.className = "server-card";
       if (saved.smolixSelectedServerId === server.id) button.classList.add("selected");
+      if (server.chromeProxySupported === false) button.classList.add("server-card-hint");
 
       const main = document.createElement("div");
       main.className = "server-main";
@@ -586,7 +600,10 @@ async function openServers() {
       name.textContent = server.name;
 
       const country = document.createElement("small");
-      country.textContent = server.country || "Россия";
+      country.textContent =
+        server.chromeProxySupported === false
+          ? `${server.country || "Локация"} · для телефона (ссылка)`
+          : server.country || "Россия";
       main.append(name, country);
 
       const side = document.createElement("div");
@@ -618,7 +635,7 @@ async function openServers() {
       list.appendChild(button);
     });
   } catch (error) {
-    showToast(error.message || "Не удалось загрузить серверы", "error");
+    showToast(humanizeError(error) || "Не удалось загрузить серверы", "error");
   }
 }
 
@@ -744,12 +761,7 @@ $("authForm")?.addEventListener("submit", async (event) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Не удалось выполнить вход";
-    setText(
-      "authError",
-      isNetworkError(error)
-        ? "Нет соединения с API. Запустите сервер или проверьте разрешения."
-        : message
-    );
+    setText("authError", humanizeError(error) || message);
   } finally {
     submit.disabled = false;
     submit.textContent = authMode === "register" ? "Зарегистрироваться" : "Войти";
@@ -779,7 +791,7 @@ $("connectButton")?.addEventListener("click", async () => {
   }
 
   if (apiOffline) {
-    showToast("Подключение недоступно: нет соединения с API", "error");
+    showToast("Нет сети — подключение недоступно", "error");
     updateConnectButtonAvailability();
     return;
   }
@@ -808,8 +820,9 @@ $("connectButton")?.addEventListener("click", async () => {
     );
   } catch (error) {
     setConnectionState("error", "Ошибка");
-    recordConnectionEvent("FAILED", error.message || "Ошибка подключения");
-    showToast(error.message || "Ошибка подключения", "error");
+    const friendly = humanizeError(error);
+    recordConnectionEvent("FAILED", friendly);
+    showToast(friendly, "error");
   } finally {
     updateConnectButtonAvailability();
   }

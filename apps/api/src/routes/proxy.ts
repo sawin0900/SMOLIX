@@ -12,11 +12,7 @@ import {
   generateProxyUsername,
 } from '../lib/proxy-manager.js'
 import { ensureRemnawaveProvisioned } from '../lib/vpn-provision.js'
-
-const RUSSIA_NODE_ID = '3a20c063-8cdc-4d0f-9e82-67939df3e66e'
-
-const PROXY_HOST = 'rassiya.jetsale.online'
-const PROXY_PORT = 8443
+import { getEnabledExtensionNode } from '../lib/extension-nodes.js'
 
 function getBearerToken(authorization?: string) {
   if (!authorization) return null
@@ -66,10 +62,19 @@ const proxyRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    if (query.serverId !== RUSSIA_NODE_ID) {
+    const serverId = query.serverId?.trim()
+    if (!serverId) {
       return reply.code(400).send({
         code: 'PROXY_NOT_CONFIGURED',
-        message: 'Proxy is currently available only in Russia',
+        message: 'Выберите локацию в расширении',
+      })
+    }
+
+    const node = await getEnabledExtensionNode(serverId)
+    if (!node || !node.hostname?.trim()) {
+      return reply.code(400).send({
+        code: 'PROXY_NOT_CONFIGURED',
+        message: 'Эта локация выключена в админке или не задан proxy host',
       })
     }
 
@@ -81,7 +86,6 @@ const proxyRoutes: FastifyPluginAsync = async (app) => {
       })
     }
 
-    // Keep Remnawave panel user in sync (expireAt / squad) when proxy is requested
     await ensureRemnawaveProvisioned(session.user.id).catch((error) => {
       request.log.error(error)
     })
@@ -99,7 +103,23 @@ const proxyRoutes: FastifyPluginAsync = async (app) => {
       username = generateProxyUsername(session.user.id)
       password = generateProxyPassword()
 
-      await createProxyUser(username, password)
+      try {
+        await createProxyUser(username, password)
+      } catch (error) {
+        const code =
+          error && typeof error === 'object' && 'code' in error
+            ? String((error as { code?: string }).code)
+            : null
+        const message = error instanceof Error ? error.message : 'Не удалось создать proxy-учётку'
+        request.log.error(error)
+        return reply.code(503).send({
+          code: code === 'PROXY_MANAGER_MISSING' ? 'PROXY_MANAGER_MISSING' : 'PROXY_PROVISION_FAILED',
+          message:
+            code === 'PROXY_MANAGER_MISSING'
+              ? message
+              : 'Сервис прокси временно недоступен. Попробуйте позже или напишите в поддержку.',
+        })
+      }
 
       try {
         await prisma.vpnAccount.update({
@@ -117,7 +137,11 @@ const proxyRoutes: FastifyPluginAsync = async (app) => {
         } catch {
           // Provisioning cleanup can be retried separately.
         }
-        throw error
+        request.log.error(error)
+        return reply.code(503).send({
+          code: 'PROXY_PROVISION_FAILED',
+          message: 'Не удалось сохранить доступ к прокси. Попробуйте ещё раз.',
+        })
       }
     }
 
@@ -129,10 +153,15 @@ const proxyRoutes: FastifyPluginAsync = async (app) => {
     return {
       proxy: {
         scheme: 'https',
-        host: PROXY_HOST,
-        port: PROXY_PORT,
+        host: node.hostname.trim(),
+        port: node.port || 8443,
         username,
         password,
+      },
+      server: {
+        id: node.remnawaveNodeUuid,
+        name: node.name,
+        country: node.countryName,
       },
     }
   })

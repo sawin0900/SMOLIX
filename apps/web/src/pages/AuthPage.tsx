@@ -57,6 +57,16 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [referralCode, setReferralCode] = useState(() => (params.get('ref') || '').toLowerCase())
+
+  useEffect(() => {
+    const promo = (params.get('promo') || params.get('coupon') || '').trim().toUpperCase()
+    if (!promo) return
+    try {
+      localStorage.setItem('jetsale_promo', promo)
+    } catch {
+      /* ignore */
+    }
+  }, [params])
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

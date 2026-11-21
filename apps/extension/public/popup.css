@@ -718,6 +718,12 @@ html, body {
   box-shadow: 0 4px 14px rgba(16, 32, 40, 0.03);
 }
 
+a.setting-row {
+  text-decoration: none;
+  color: inherit;
+  box-sizing: border-box;
+}
+
 .setting-row {
   width: 100%;
   text-align: left;

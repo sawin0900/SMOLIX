@@ -1,17 +1,21 @@
-const API_URLS = [
-  "https://jetsale.online/api",
-  "http://127.0.0.1:3001",
-  "http://localhost:3001",
-];
+const API_URLS = ["https://jetsale.online/api"];
 
-const PROXY_HOST = "rassiya.jetsale.online";
-const PROXY_PORT = 8443;
+const DEFAULT_PROXY_HOST = "rassiya.jetsale.online";
+const DEFAULT_PROXY_PORT = 8443;
 
 const PROXY_STORAGE_KEY = "smolixProxyCredentials";
 const PROXY_STARTED_AT_KEY = "smolixProxyStartedAt";
 const PROXY_MODE_KEY = "smolixProxyMode";
+const PROXY_ENDPOINT_KEY = "smolixProxyEndpoint";
 
 console.log("jetsale.online background service worker started");
+
+async function getStoredProxyEndpoint() {
+  const storage = await chrome.storage.session.get(PROXY_ENDPOINT_KEY);
+  const endpoint = storage[PROXY_ENDPOINT_KEY];
+  if (endpoint?.host && endpoint?.port) return endpoint;
+  return { host: DEFAULT_PROXY_HOST, port: DEFAULT_PROXY_PORT };
+}
 
 async function getProxyCredentials(serverId, mode = "full") {
   const { smolixToken } = await chrome.storage.local.get("smolixToken");
@@ -38,8 +42,10 @@ async function getProxyCredentials(serverId, mode = "full") {
       UNAUTHORIZED: "Сессия истекла. Войдите в аккаунт заново.",
       INVALID_SESSION: "Сессия недействительна. Войдите заново.",
       ACCOUNT_DISABLED: "Аккаунт заблокирован.",
-      SUBSCRIPTION_REQUIRED: "Для подключения необходима активная подписка.",
-      PROXY_NOT_CONFIGURED: "Прокси для этого сервера пока не настроен.",
+      SUBSCRIPTION_REQUIRED: "Trial кончился. YouTube бесплатно; для полного интернета откройте кабинет → Premium.",
+      PROXY_NOT_CONFIGURED: data.message || "Локация выключена в админке или не настроен proxy host.",
+      PROXY_MANAGER_MISSING: data.message || "Прокси на сервере не настроен (Proxy Manager). Напишите в поддержку.",
+      PROXY_PROVISION_FAILED: data.message || "Не удалось выдать доступ к прокси. Попробуйте позже.",
       VPN_ACCOUNT_NOT_FOUND: "VPN-аккаунт не найден."
     };
 
@@ -53,8 +59,8 @@ async function getProxyCredentials(serverId, mode = "full") {
   if (
     !data.proxy ||
     data.proxy.scheme !== "https" ||
-    data.proxy.host !== PROXY_HOST ||
-    data.proxy.port !== PROXY_PORT ||
+    !data.proxy.host ||
+    !data.proxy.port ||
     !data.proxy.username ||
     !data.proxy.password
   ) {
@@ -63,13 +69,13 @@ async function getProxyCredentials(serverId, mode = "full") {
 
   return {
     username: data.proxy.username,
-    password: data.proxy.password
+    password: data.proxy.password,
+    host: data.proxy.host,
+    port: Number(data.proxy.port) || DEFAULT_PROXY_PORT,
   };
 }
 
-function buildFullModePac() {
-  // Full VPN with Russian split-tunnel: .ru and major RU services go DIRECT
-  // so banks, Gosuslugi, VK, Yandex, marketplaces keep working.
+function buildFullModePac(proxyHost, proxyPort) {
   return `
     function FindProxyForURL(url, host) {
       var h = host.toLowerCase();
@@ -79,12 +85,10 @@ function buildFullModePac() {
         return "DIRECT";
       }
 
-      // Always keep jetsale.online control-plane / subscription page reachable directly
-      if (h === "${PROXY_HOST}" || dnsDomainIs(h, ".jetsale.online")) {
+      if (h === "${proxyHost}" || dnsDomainIs(h, ".jetsale.online")) {
         return "DIRECT";
       }
 
-      // Russian sites + common RU CDNs / banks / gov / marketplaces
       if (dnsDomainIs(h, ".ru") || h === "ru" ||
           dnsDomainIs(h, ".xn--p1ai") ||
           dnsDomainIs(h, ".su") ||
@@ -114,12 +118,12 @@ function buildFullModePac() {
         return "DIRECT";
       }
 
-      return "HTTPS ${PROXY_HOST}:${PROXY_PORT}";
+      return "HTTPS ${proxyHost}:${proxyPort}";
     }
   `;
 }
 
-function setChromeProxy(mode = "full") {
+function setChromeProxy(mode = "full", proxyHost = DEFAULT_PROXY_HOST, proxyPort = DEFAULT_PROXY_PORT) {
   return new Promise((resolve, reject) => {
     const value = mode === "youtube"
       ? {
@@ -133,7 +137,7 @@ function setChromeProxy(mode = "full") {
                     h === "googlevideo.com" || dnsDomainIs(h, ".googlevideo.com") ||
                     h === "ytimg.com" || dnsDomainIs(h, ".ytimg.com") ||
                     h === "ggpht.com" || dnsDomainIs(h, ".ggpht.com")) {
-                  return "HTTPS ${PROXY_HOST}:${PROXY_PORT}";
+                  return "HTTPS ${proxyHost}:${proxyPort}";
                 }
                 return "DIRECT";
               }
@@ -143,7 +147,7 @@ function setChromeProxy(mode = "full") {
       : {
           mode: "pac_script",
           pacScript: {
-            data: buildFullModePac()
+            data: buildFullModePac(proxyHost, proxyPort)
           }
         };
 
@@ -183,14 +187,19 @@ async function connect(serverId, mode = "full") {
   }
 
   const credentials = await getProxyCredentials(serverId, mode);
+  const endpoint = { host: credentials.host, port: credentials.port };
 
   await chrome.storage.session.set({
-    [PROXY_STORAGE_KEY]: credentials,
-    [PROXY_MODE_KEY]: mode
+    [PROXY_STORAGE_KEY]: {
+      username: credentials.username,
+      password: credentials.password,
+    },
+    [PROXY_MODE_KEY]: mode,
+    [PROXY_ENDPOINT_KEY]: endpoint,
   });
 
   try {
-    await setChromeProxy(mode);
+    await setChromeProxy(mode, endpoint.host, endpoint.port);
 
     const startedAt = Date.now();
 
@@ -209,7 +218,8 @@ async function connect(serverId, mode = "full") {
   } catch (error) {
     await chrome.storage.session.remove([
       PROXY_STORAGE_KEY,
-      PROXY_STARTED_AT_KEY
+      PROXY_STARTED_AT_KEY,
+      PROXY_ENDPOINT_KEY,
     ]);
 
     await setActionState("error");
@@ -224,7 +234,8 @@ async function disconnect() {
   await chrome.storage.session.remove([
     PROXY_STORAGE_KEY,
     PROXY_STARTED_AT_KEY,
-    PROXY_MODE_KEY
+    PROXY_MODE_KEY,
+    PROXY_ENDPOINT_KEY,
   ]);
 
   await setActionState("disconnected");
@@ -336,166 +347,144 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "GET_PROXY_STATUS") {
-    chrome.proxy.settings.get(
-      { incognito: false },
-      (details) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({
-            success: false,
-            message: chrome.runtime.lastError.message
-          });
-          return;
-        }
-
+    chrome.proxy.settings.get({ incognito: false }, async (details) => {
+      if (chrome.runtime.lastError) {
         sendResponse({
-          success: true,
-          levelOfControl: details.levelOfControl,
-          value: details.value
+          success: false,
+          message: chrome.runtime.lastError.message
         });
+        return;
       }
-    );
+
+      const endpoint = await getStoredProxyEndpoint();
+      sendResponse({
+        success: true,
+        value: details.value,
+        endpoint,
+      });
+    });
 
     return true;
   }
 
   if (message?.type === "RUN_DIAGNOSTICS") {
     (async () => {
-      const storage = await chrome.storage.session.get([
-        PROXY_STORAGE_KEY,
-        PROXY_STARTED_AT_KEY,
-        PROXY_MODE_KEY,
-      ]);
-
-      const diagnostics = {
-        api: false,
-        proxyConfigured: false,
-        credentials: Boolean(storage[PROXY_STORAGE_KEY]),
-        internet: false,
-        dnsEndpoint: false,
-        mode: storage[PROXY_MODE_KEY] || "none",
-      };
-
+      const { smolixToken } = await chrome.storage.local.get("smolixToken");
+      let api = false;
       try {
-        const response = await fetch(`${API_URLS[0]}/health`, {
-          signal: AbortSignal.timeout(5000),
+        const res = await fetch(`${API_URLS[0]}/health`, { signal: AbortSignal.timeout(5000) });
+        api = res.ok;
+      } catch {
+        api = false;
+      }
+
+      const creds = await chrome.storage.session.get(PROXY_STORAGE_KEY);
+      const endpoint = await getStoredProxyEndpoint();
+
+      const proxyConfigured = await new Promise((resolve) => {
+        chrome.proxy.settings.get({ incognito: false }, (details) => {
+          const pac = details?.value?.pacScript?.data || "";
+          resolve(
+            details?.value?.mode === "pac_script" &&
+            pac.includes(endpoint.host)
+          );
         });
-        diagnostics.api = response.ok;
-      } catch {}
-
-      try {
-        const internetResponse = await fetch("https://www.cloudflare.com/cdn-cgi/trace", {
-          cache: "no-store",
-          signal: AbortSignal.timeout(7000),
-        });
-        diagnostics.internet = internetResponse.ok;
-        diagnostics.dnsEndpoint = internetResponse.ok;
-      } catch {}
-
-      chrome.proxy.settings.get({ incognito: false }, (details) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({ success: false, diagnostics });
-          return;
-        }
-
-        const pac = details.value?.pacScript?.data || "";
-        const isFull = details.value?.mode === "pac_script" && pac.includes("dnsDomainIs(h, \".ru\")") && pac.includes(PROXY_HOST);
-        const isYoutube = details.value?.mode === "pac_script" && pac.includes("googlevideo.com") && !pac.includes("dnsDomainIs(h, \".ru\")");
-        diagnostics.proxyConfigured = isFull || isYoutube;
-
-        sendResponse({ success: true, diagnostics });
       });
-    })();
+
+      sendResponse({
+        success: true,
+        diagnostics: {
+          api,
+          credentials: Boolean(creds[PROXY_STORAGE_KEY]),
+          proxyConfigured,
+          token: Boolean(smolixToken),
+          endpoint,
+        }
+      });
+    })().catch((error) => {
+      sendResponse({ success: false, message: error.message });
+    });
 
     return true;
   }
+
+  return false;
 });
 
-// Авторизация на HTTPS-прокси.
 chrome.webRequest.onAuthRequired.addListener(
   (details, callback) => {
-    if (
-      !details.isProxy ||
-      details.challenger?.host !== PROXY_HOST ||
-      details.challenger?.port !== PROXY_PORT
-    ) {
-      callback({});
-      return;
-    }
+    chrome.storage.session.get([PROXY_STORAGE_KEY, PROXY_ENDPOINT_KEY]).then((storage) => {
+      const credentials = storage[PROXY_STORAGE_KEY];
+      const endpoint = storage[PROXY_ENDPOINT_KEY] || {
+        host: DEFAULT_PROXY_HOST,
+        port: DEFAULT_PROXY_PORT,
+      };
 
-    chrome.storage.session.get(PROXY_STORAGE_KEY)
-      .then((result) => {
-        const credentials = result[PROXY_STORAGE_KEY];
+      if (
+        !credentials ||
+        details.challenger?.host !== endpoint.host ||
+        details.isProxy !== true
+      ) {
+        callback();
+        return;
+      }
 
-        if (!credentials) {
-          callback({ cancel: true });
-          return;
+      callback({
+        authCredentials: {
+          username: credentials.username,
+          password: credentials.password
         }
-
-        callback({
-          authCredentials: {
-            username: credentials.username,
-            password: credentials.password
-          }
-        });
-      })
-      .catch((error) => {
-        console.error("jetsale.online proxy authentication error:", error);
-        callback({ cancel: true });
       });
+    }).catch((error) => {
+      console.error("jetsale.online proxy authentication error:", error);
+      callback();
+    });
   },
   { urls: ["<all_urls>"] },
   ["asyncBlocking"]
 );
 
-console.log("jetsale.online proxy authentication handler registered");
-
 async function setActionState(state) {
   if (state === "connected") {
     await chrome.action.setBadgeText({ text: "ON" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#25C58B" });
-    await chrome.action.setTitle({ title: "jetsale.online VPN — подключён" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#0f766e" });
     return;
   }
-
   if (state === "error") {
     await chrome.action.setBadgeText({ text: "!" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#ED5E78" });
-    await chrome.action.setTitle({ title: "jetsale.online VPN — ошибка подключения" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#be123c" });
     return;
   }
-
   await chrome.action.setBadgeText({ text: "" });
-  await chrome.action.setTitle({ title: "jetsale.online VPN — отключён" });
 }
 
 async function syncActionFromProxyStatus() {
-  await new Promise((resolve) => {
-    chrome.proxy.settings.get({ incognito: false }, (details) => {
-      if (chrome.runtime.lastError) {
-        setActionState("error").then(resolve);
-        return;
+  return new Promise((resolve) => {
+    chrome.proxy.settings.get({ incognito: false }, async (details) => {
+      const endpoint = await getStoredProxyEndpoint();
+      const pac = details?.value?.pacScript?.data || "";
+      const connected =
+        details?.value?.mode === "pac_script" &&
+        pac.includes(endpoint.host);
+
+      if (connected) {
+        setActionState("connected").then(resolve);
+      } else {
+        setActionState("disconnected").then(resolve);
       }
-
-      const pac = details.value?.pacScript?.data || "";
-      const isFull =
-        details.value?.mode === "pac_script" &&
-        pac.includes("dnsDomainIs(h, \".ru\")") &&
-        pac.includes(PROXY_HOST);
-      const isYoutube =
-        details.value?.mode === "pac_script" &&
-        pac.includes("googlevideo.com") &&
-        !pac.includes("dnsDomainIs(h, \".ru\")");
-
-      setActionState(isFull || isYoutube ? "connected" : "disconnected")
-        .then(resolve);
     });
   });
 }
 
 async function showVpnNotification(title, message) {
-  await chrome.notifications.create({
-    type: "basic",
-    title,
-    message,
-  });
+  try {
+    await chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icons/icon128.png",
+      title,
+      message,
+    });
+  } catch {
+    /* notifications optional */
+  }
 }

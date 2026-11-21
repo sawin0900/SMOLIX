@@ -166,6 +166,24 @@ model Server {
   @@index([isActive])
 }
 
+/// Remnawave nodes exposed (or not) in the Chrome extension location picker.
+model ExtensionNode {
+  id                String   @id @default(uuid()) @db.Uuid
+  remnawaveNodeUuid String   @unique
+  name              String
+  countryCode       String
+  countryName       String
+  /// Chrome HTTPS proxy host; required for connect when enabled
+  hostname          String?
+  port              Int      @default(8443)
+  isEnabled         Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isEnabled])
+}
+
 model Plan {
   id           String   @id @default(uuid()) @db.Uuid
   slug         String?  @unique
@@ -435,4 +453,12 @@ model SitePage {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
   createdAt DateTime @default(now())
+}
+
+/// Key/value ops settings (status banner override, …)
+model SystemSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
 }

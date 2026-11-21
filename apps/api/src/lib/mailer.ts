@@ -108,6 +108,24 @@ function emailShell(options: {
 </html>`
 }
 
+const mailStats = {
+  sentOk: 0,
+  failed: 0,
+  loggedDev: 0,
+  lastError: null as string | null,
+  lastOkAt: null as string | null,
+  lastFailAt: null as string | null,
+  lastTo: null as string | null,
+}
+
+export function getMailStats() {
+  return {
+    smtpConfigured: hasSmtpConfig(),
+    from: fromAddress,
+    ...mailStats,
+  }
+}
+
 export async function sendMail(input: SendMailInput) {
   const transport = createTransport()
 
@@ -118,18 +136,32 @@ export async function sendMail(input: SendMailInput) {
       subject: input.subject,
       text: input.text,
     })
+    mailStats.loggedDev += 1
+    mailStats.lastTo = input.to
+    mailStats.lastOkAt = new Date().toISOString()
     return { delivered: false, mode: 'log' as const }
   }
 
-  await transport.sendMail({
-    from: fromAddress,
-    to: input.to,
-    subject: input.subject,
-    text: input.text,
-    html: input.html || `<pre style="font-family:inherit;white-space:pre-wrap;">${escapeHtml(input.text)}</pre>`,
-  })
-
-  return { delivered: true, mode: 'smtp' as const }
+  try {
+    await transport.sendMail({
+      from: fromAddress,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html || `<pre style="font-family:inherit;white-space:pre-wrap;">${escapeHtml(input.text)}</pre>`,
+    })
+    mailStats.sentOk += 1
+    mailStats.lastError = null
+    mailStats.lastTo = input.to
+    mailStats.lastOkAt = new Date().toISOString()
+    return { delivered: true, mode: 'smtp' as const }
+  } catch (err) {
+    mailStats.failed += 1
+    mailStats.lastFailAt = new Date().toISOString()
+    mailStats.lastTo = input.to
+    mailStats.lastError = err instanceof Error ? err.message : String(err)
+    throw err
+  }
 }
 
 export function premiumLaunchEmail(siteUrl: string): MailContent {
