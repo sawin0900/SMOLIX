@@ -1178,11 +1178,8 @@ export default function Landing() {
         </div>
         <div className="mt-8 pt-6 border-t border-[var(--border)] space-y-3 text-xs text-[var(--muted)]">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <span className="font-semibold text-[var(--ink)]">{t.footerBrandCopy}</span>
-            <div className="flex items-center gap-4">
-              <LocaleToggle locale={locale} onLocaleChange={setLocalePersisted} />
-              <span>{t.footerCopy}</span>
-            </div>
+            <span>{t.footerCopy}</span>
+            <LocaleToggle locale={locale} onLocaleChange={setLocalePersisted} />
           </div>
           <p className="leading-5 max-w-4xl">{t.footerTrademarks}</p>
         </div>

@@ -33,9 +33,8 @@ export const LANDING_COPY = {
     socialMetricLink: 'Одна ссылка подписки',
     footerPrivacy: 'Политика',
     footerTerms: 'Оферта',
-    footerBrandCopy: 'PREMIUM WEB © 2024-2026',
     footerTrademarks:
-      'Apple, логотип Apple, iPhone, iPad, iOS, Mac, macOS и App Store — товарные знаки Apple Inc. Google Play и логотип Google Play — товарные знаки Google LLC. Android — товарный знак Google LLC. Windows — товарный знак Microsoft Corporation. Все прочие товарные знаки принадлежат их владельцам. Premium Web использует эти обозначения исключительно для указания совместимости и не связан с указанными компаниями, не спонсируется и не одобряется ими.',
+      'Apple, логотип Apple, iPhone, iPad, iOS, Mac, macOS и App Store — товарные знаки Apple Inc. Google Play и логотип Google Play — товарные знаки Google LLC. Android — товарный знак Google LLC. Windows — товарный знак Microsoft Corporation. Все прочие товарные знаки принадлежат их владельцам. SMOLIX использует эти обозначения исключительно для указания совместимости и не связан с указанными компаниями, не спонсируется и не одобряется ими.',
     howEyebrow: 'Как это работает',
     howTitle: 'Три шага — и вы онлайн',
     how1t: 'Аккаунт',
@@ -164,9 +163,8 @@ export const LANDING_COPY = {
     socialMetricLink: 'One subscription link',
     footerPrivacy: 'Privacy Policy',
     footerTerms: 'Offer',
-    footerBrandCopy: 'PREMIUM WEB © 2024-2026',
     footerTrademarks:
-      'Apple, the Apple logo, iPhone, iPad, iOS, Mac, macOS, and App Store are trademarks of Apple Inc. Google Play and the Google Play logo are trademarks of Google LLC. Android is a trademark of Google LLC. Windows is a trademark of Microsoft Corporation. All other trademarks belong to their respective owners. Premium Web uses these marks solely to indicate compatibility and is not affiliated with, sponsored by, or endorsed by those companies.',
+      'Apple, the Apple logo, iPhone, iPad, iOS, Mac, macOS, and App Store are trademarks of Apple Inc. Google Play and the Google Play logo are trademarks of Google LLC. Android is a trademark of Google LLC. Windows is a trademark of Microsoft Corporation. All other trademarks belong to their respective owners. SMOLIX uses these marks solely to indicate compatibility and is not affiliated with, sponsored by, or endorsed by those companies.',
     howEyebrow: 'How it works',
     howTitle: 'Three steps — and you’re online',
     how1t: 'Account',
