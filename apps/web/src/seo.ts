@@ -31,14 +31,14 @@ export const SEO_PAGES = {
     path: '/install',
   },
   privacy: {
-    title: 'Privacy Policy — SMOLIX',
+    title: 'Политика конфиденциальности — SMOLIX',
     description: 'Политика конфиденциальности SMOLIX: какие данные обрабатываются для сайта и расширения.',
-    path: '/legal/privacy',
+    path: '/policy',
   },
   terms: {
-    title: 'Terms of Service — SMOLIX',
-    description: 'Условия использования сервиса SMOLIX: сайт, расширение и подписка Premium.',
-    path: '/legal/terms',
+    title: 'Публичная оферта — SMOLIX',
+    description: 'Публичная оферта SMOLIX: условия использования сайта, расширения и подписки Premium.',
+    path: '/oferta',
   },
   auth: {
     title: 'Вход в SMOLIX',

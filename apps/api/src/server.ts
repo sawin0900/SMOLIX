@@ -12,6 +12,7 @@ import adminRoutes from './routes/admin.js'
 import marketingRoutes from './routes/marketing.js'
 import billingRoutes from './routes/billing.js'
 import statusRoutes from './routes/status.js'
+import siteRoutes, { siteAdminRoutes } from './routes/site.js'
 import {
   getAllowedWebOrigins,
   isAllowedOrigin,
@@ -188,6 +189,14 @@ await app.register(marketingRoutes, {
 
 await app.register(billingRoutes, {
   prefix: '/billing',
+})
+
+await app.register(siteRoutes, {
+  prefix: '/site',
+})
+
+await app.register(siteAdminRoutes, {
+  prefix: '/admin/site',
 })
 
 await app.register(statusRoutes, {

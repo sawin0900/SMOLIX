@@ -42,18 +42,18 @@ const routes = [
     `,
   },
   {
-    file: path.join('legal', 'privacy', 'index.html'),
-    path: '/legal/privacy',
-    title: 'Privacy Policy — SMOLIX',
+    file: path.join('policy', 'index.html'),
+    path: '/policy',
+    title: 'Политика конфиденциальности — SMOLIX',
     description: 'Политика конфиденциальности SMOLIX: какие данные обрабатываются для сайта и расширения.',
-    noscript: `<h1>Privacy Policy — SMOLIX</h1><p>Политика конфиденциальности сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
+    noscript: `<h1>Политика конфиденциальности — SMOLIX</h1><p>Политика конфиденциальности сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
   },
   {
-    file: path.join('legal', 'terms', 'index.html'),
-    path: '/legal/terms',
-    title: 'Terms of Service — SMOLIX',
-    description: 'Условия использования сервиса SMOLIX: сайт, расширение и подписка Premium.',
-    noscript: `<h1>Terms of Service — SMOLIX</h1><p>Условия использования сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
+    file: path.join('oferta', 'index.html'),
+    path: '/oferta',
+    title: 'Публичная оферта — SMOLIX',
+    description: 'Публичная оферта SMOLIX: условия использования сайта, расширения и подписки Premium.',
+    noscript: `<h1>Публичная оферта — SMOLIX</h1><p>Условия использования сервиса SMOLIX.</p><p><a href="/">На главную</a></p>`,
   },
 ]
 

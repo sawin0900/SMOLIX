@@ -1168,20 +1168,23 @@ export default function Landing() {
             <div>
               <p className="font-bold text-[var(--ink)] mb-3">{t.footerLegal}</p>
               <ul className="space-y-2 text-[var(--muted)]">
-                <li><Link to="/legal/privacy" className="hover:text-teal-800 transition">{t.footerPrivacy}</Link></li>
-                <li><Link to="/legal/terms" className="hover:text-teal-800 transition">{t.footerTerms}</Link></li>
+                <li><Link to="/policy" className="hover:text-teal-800 transition">{t.footerPrivacy}</Link></li>
+                <li><Link to="/oferta" className="hover:text-teal-800 transition">{t.footerTerms}</Link></li>
                 <li><Link to="/status" className="hover:text-teal-800 transition">{t.footerStatus}</Link></li>
                 <li><a href="mailto:support@smolix.app" className="hover:text-teal-800 transition">support@smolix.app</a></li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-[var(--border)] flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-xs text-[var(--muted)]">
-          <span>© {new Date().getFullYear()} SMOLIX</span>
-          <div className="flex items-center gap-4">
-            <LocaleToggle locale={locale} onLocaleChange={setLocalePersisted} />
-            <span>{t.footerCopy}</span>
+        <div className="mt-8 pt-6 border-t border-[var(--border)] space-y-3 text-xs text-[var(--muted)]">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <span className="font-semibold text-[var(--ink)]">{t.footerBrandCopy}</span>
+            <div className="flex items-center gap-4">
+              <LocaleToggle locale={locale} onLocaleChange={setLocalePersisted} />
+              <span>{t.footerCopy}</span>
+            </div>
           </div>
+          <p className="leading-5 max-w-4xl">{t.footerTrademarks}</p>
         </div>
       </footer>
 
@@ -1202,7 +1205,7 @@ export default function Landing() {
         <div className="landing-cookie">
           <p>
             {t.cookieText}{' '}
-            <Link to="/legal/privacy">{t.cookieMore}</Link>
+            <Link to="/policy">{t.cookieMore}</Link>
           </p>
           <button
             type="button"

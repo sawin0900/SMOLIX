@@ -16,8 +16,12 @@ export default function App() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/app/*" element={<AppCabinet />} />
       <Route path="/admin" element={<AdminPanel />} />
-      <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
-      <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
+      <Route path="/privacy" element={<Navigate to="/policy" replace />} />
+      <Route path="/terms" element={<Navigate to="/oferta" replace />} />
+      <Route path="/legal/privacy" element={<Navigate to="/policy" replace />} />
+      <Route path="/legal/terms" element={<Navigate to="/oferta" replace />} />
+      <Route path="/oferta" element={<LegalPage />} />
+      <Route path="/policy" element={<LegalPage />} />
       <Route path="/legal/:doc" element={<LegalPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

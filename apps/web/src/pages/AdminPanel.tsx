@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   ShieldCheck, RefreshCw, LogOut, Users, CreditCard, Server, MonitorSmartphone,
   ArrowLeft, Mail, Network, ExternalLink, Receipt, Bell, AlertTriangle,
-  Search, Gift, ScrollText, Layers, Download,
+  Search, Gift, ScrollText, Layers, Download, FileText,
 } from 'lucide-react'
 import {
   getAccount,
@@ -37,7 +37,10 @@ import {
   markAdminOrderPaid,
   refundAdminOrder,
   impersonateAdminUser,
+  getAdminSitePages,
+  updateAdminSitePage,
   logout,
+  type SitePage,
   type User,
   type AdminStats,
   type AdminUser,
@@ -72,6 +75,7 @@ type Tab =
   | 'referrals'
   | 'audit'
   | 'plans'
+  | 'pages'
 
 type WaitlistEntry = { id: string; email: string; source: string; notifiedAt?: string | null; createdAt: string }
 
@@ -141,6 +145,11 @@ export default function AdminPanel() {
   const [referrals, setReferrals] = useState<ReferralsData | null>(null)
   const [planRows, setPlanRows] = useState<AdminPlanRow[]>([])
   const [couponRows, setCouponRows] = useState<AdminCouponRow[]>([])
+  const [sitePages, setSitePages] = useState<SitePage[]>([])
+  const [pageSlug, setPageSlug] = useState<'oferta' | 'policy'>('oferta')
+  const [pageTitle, setPageTitle] = useState('')
+  const [pageBody, setPageBody] = useState('')
+  const [pageBusy, setPageBusy] = useState(false)
 
   const loadOverview = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
@@ -251,6 +260,17 @@ export default function AdminPanel() {
           const [plansRes, couponsRes] = await Promise.all([getAdminPlans(), getAdminCoupons()])
           setPlanRows(plansRes.plans)
           setCouponRows(couponsRes.coupons)
+          break
+        }
+        case 'pages': {
+          const pagesRes = await getAdminSitePages()
+          setSitePages(pagesRes.pages)
+          const first = pagesRes.pages[0]
+          if (first) {
+            setPageSlug((first.slug as 'oferta' | 'policy') || 'oferta')
+            setPageTitle(first.title)
+            setPageBody(first.body)
+          }
           break
         }
         default:
@@ -412,6 +432,7 @@ export default function AdminPanel() {
     { id: 'referrals', label: 'Рефералы', icon: Gift },
     { id: 'audit', label: 'Аудит', icon: ScrollText },
     { id: 'plans', label: 'Тарифы', icon: Layers },
+    { id: 'pages', label: 'Оферта / Политика', icon: FileText },
   ]
 
   return (
@@ -1781,6 +1802,83 @@ export default function AdminPanel() {
                     ))}
                   </>
                 )}
+              </div>
+            </div>
+          )}
+
+          {tab === 'pages' && (
+            <div className="space-y-4">
+              <div className="admin-card p-5">
+                <p className="font-bold">Юридические страницы сайта</p>
+                <p className="text-xs admin-muted mt-1">
+                  Редактируются тексты <a className="text-teal-300 hover:underline" href="/oferta" target="_blank" rel="noreferrer">/oferta</a>
+                  {' '}и{' '}
+                  <a className="text-teal-300 hover:underline" href="/policy" target="_blank" rel="noreferrer">/policy</a>.
+                  Плейсхолдеры вроде [ИНН], [EMAIL] замените на свои данные.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(['oferta', 'policy'] as const).map((slug) => {
+                    const page = sitePages.find((item) => item.slug === slug)
+                    const active = pageSlug === slug
+                    return (
+                      <button
+                        key={slug}
+                        type="button"
+                        className={`text-xs font-bold px-3 py-2 rounded-lg border transition ${
+                          active
+                            ? 'border-teal-400/50 bg-teal-500/15 text-teal-100'
+                            : 'border-[var(--admin-border-soft)] text-[var(--admin-text-soft)] hover:bg-white/5'
+                        }`}
+                        onClick={() => {
+                          setPageSlug(slug)
+                          if (page) {
+                            setPageTitle(page.title)
+                            setPageBody(page.body)
+                          }
+                        }}
+                      >
+                        {slug === 'oferta' ? 'Оферта' : 'Политика'}
+                        {page?.updatedAt ? ` · ${formatDate(page.updatedAt)}` : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+                <label className="block mt-4 text-xs admin-muted">Заголовок</label>
+                <input
+                  value={pageTitle}
+                  onChange={(e) => setPageTitle(e.target.value)}
+                  className="admin-input mt-1 w-full"
+                />
+                <label className="block mt-4 text-xs admin-muted">Текст (абзацы через пустую строку)</label>
+                <textarea
+                  value={pageBody}
+                  onChange={(e) => setPageBody(e.target.value)}
+                  rows={18}
+                  className="admin-input mt-1 w-full font-mono text-xs leading-5 min-h-[320px]"
+                />
+                <button
+                  type="button"
+                  disabled={pageBusy || !pageTitle.trim() || pageBody.trim().length < 20}
+                  onClick={() => runAction(`page-${pageSlug}`, async () => {
+                    setPageBusy(true)
+                    try {
+                      const res = await updateAdminSitePage(pageSlug, {
+                        title: pageTitle.trim(),
+                        body: pageBody.trim(),
+                      })
+                      setSitePages((prev) => {
+                        const next = prev.filter((item) => item.slug !== pageSlug)
+                        return [...next, res.page]
+                      })
+                      return res.message
+                    } finally {
+                      setPageBusy(false)
+                    }
+                  })}
+                  className="admin-btn mt-4 disabled:opacity-60"
+                >
+                  {pageBusy ? 'Сохранение…' : 'Сохранить страницу'}
+                </button>
               </div>
             </div>
           )}

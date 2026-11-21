@@ -877,6 +877,29 @@ export function getAccountNotices() {
   return request<{ notices: Array<{ id: string; level: 'info' | 'warning' | 'critical'; title: string; text: string; href?: string }> }>('/account/notices')
 }
 
+export type SitePage = {
+  slug: string
+  title: string
+  body: string
+  updatedAt: string
+  updatedBy?: string | null
+}
+
+export function getSitePage(slug: 'oferta' | 'policy') {
+  return request<SitePage>(`/site/pages/${slug}`)
+}
+
+export function getAdminSitePages() {
+  return request<{ pages: SitePage[] }>('/admin/site/pages')
+}
+
+export function updateAdminSitePage(slug: 'oferta' | 'policy', data: { title: string; body: string }) {
+  return request<{ message: string; page: SitePage }>(`/admin/site/pages/${slug}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
 export function getWebSessions() {
   return request<{ sessions: Array<{ id: string; createdAt: string; expiresAt: string; current: boolean }> }>('/account/web-sessions')
 }

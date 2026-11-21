@@ -105,3 +105,58 @@ CREATE TABLE IF NOT EXISTS "SignupEvent" (
 
 CREATE INDEX IF NOT EXISTS "SignupEvent_kind_createdAt_idx" ON "SignupEvent"("kind", "createdAt");
 CREATE INDEX IF NOT EXISTS "SignupEvent_createdAt_idx" ON "SignupEvent"("createdAt");
+
+-- Waitlist notifiedAt (older waitlist migration may lack it)
+ALTER TABLE "WaitlistEntry" ADD COLUMN IF NOT EXISTS "notifiedAt" TIMESTAMP(3);
+
+-- Alert enums + AdminAlert + ProbeTarget (previously only via local db push)
+DO $$ BEGIN
+  CREATE TYPE "AlertSeverity" AS ENUM ('INFO', 'WARNING', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "AlertStatus" AS ENUM ('OPEN', 'ACKNOWLEDGED', 'RESOLVED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "AdminAlert" (
+  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "type" VARCHAR(64) NOT NULL,
+  "title" VARCHAR(200) NOT NULL,
+  "message" TEXT NOT NULL,
+  "severity" "AlertSeverity" NOT NULL DEFAULT 'WARNING',
+  "status" "AlertStatus" NOT NULL DEFAULT 'OPEN',
+  "target" VARCHAR(255),
+  "meta" JSONB,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "acknowledgedAt" TIMESTAMP(3),
+  "resolvedAt" TIMESTAMP(3),
+  CONSTRAINT "AdminAlert_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "AdminAlert_status_createdAt_idx" ON "AdminAlert"("status", "createdAt");
+CREATE INDEX IF NOT EXISTS "AdminAlert_type_target_idx" ON "AdminAlert"("type", "target");
+
+CREATE TABLE IF NOT EXISTS "ProbeTarget" (
+  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "key" VARCHAR(64) NOT NULL,
+  "label" VARCHAR(120) NOT NULL,
+  "host" VARCHAR(255) NOT NULL,
+  "port" INTEGER NOT NULL DEFAULT 443,
+  "kind" VARCHAR(32) NOT NULL,
+  "isActive" BOOLEAN NOT NULL DEFAULT true,
+  "lastStatus" VARCHAR(32),
+  "lastIp" VARCHAR(64),
+  "lastLatencyMs" INTEGER,
+  "lastBlocked" BOOLEAN,
+  "lastError" TEXT,
+  "lastCheckedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "ProbeTarget_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "ProbeTarget_key_key" ON "ProbeTarget"("key");
+CREATE INDEX IF NOT EXISTS "ProbeTarget_isActive_idx" ON "ProbeTarget"("isActive");

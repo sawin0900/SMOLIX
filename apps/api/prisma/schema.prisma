@@ -425,3 +425,14 @@ model ProbeTarget {
 
   @@index([isActive])
 }
+
+/// Editable legal / site pages (oferta, policy, …)
+model SitePage {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique @db.VarChar(64)
+  title     String   @db.VarChar(200)
+  body      String
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+  createdAt DateTime @default(now())
+}

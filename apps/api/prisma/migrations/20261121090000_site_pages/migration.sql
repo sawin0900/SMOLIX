@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS "SitePage" (
+  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "slug" VARCHAR(64) NOT NULL,
+  "title" VARCHAR(200) NOT NULL,
+  "body" TEXT NOT NULL,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedBy" UUID,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "SitePage_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "SitePage_slug_key" ON "SitePage"("slug");

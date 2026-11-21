@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE "WaitlistEntry" (
     "id" UUID NOT NULL,
     "email" TEXT NOT NULL,
